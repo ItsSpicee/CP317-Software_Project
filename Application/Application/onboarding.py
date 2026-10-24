@@ -1,25 +1,23 @@
 import reflex as rx
+import json
+from pathlib import Path
 
+PARENT_DIR = Path(__file__).resolve().parent.parent
+USER_DATA_FOLDER = PARENT_DIR / "User Data"
+
+GOALS = ["Micro-Nutrients", "Weight Loss", "Main Gain", "Cut"]
+GENDERS = ["Male", "Female", "Non-Binary", "2-Spirit", "Prefer not to disclose"]
+ACTIVITY_LEVELS = ["None", "Low", "Medium", "High", "Extreme"]
 
 class ButtonEvent(rx.State):
-    gender: str = ""
-    height: str = ""
-    weight: str = ""
-    activity_level: str = ""
-    current_goal: str = ""
 
     def cancel(self):
         return rx.redirect("/")
 
     def submit(self, form_data: dict):
-        self.gender = form_data.get("gender", "")
-        self.height = form_data.get("height", "")
-        self.weight = form_data.get("weight", "")
-        self.activity_level = form_data.get("activity_level", "")
-        self.current_goal = form_data.get("current_goal", "")
-
-        # Inspect the submitted information.
-        print(form_data)
+        # Save the submitted information.
+        with open(USER_DATA_FOLDER / "user_data.json", "w", encoding="utf-8") as f:
+            json.dump(form_data, f, indent=4)
 
         # Redirect after processing the submitted data.
         return rx.redirect("/personalize")
@@ -34,7 +32,7 @@ def onboarding() -> rx.Component:
                 rx.flex(
                     rx.vstack(
                         rx.heading("Welcome to NutriSpoke!", size="8"),
-                        rx.text("Let's personalize your nutrition plan."),
+                        rx.text("Tell us a little bit about yourself."),
                         spacing="5",
                         justify="center",
                         min_height="85vh",
@@ -44,8 +42,7 @@ def onboarding() -> rx.Component:
                         rx.heading("Your information:", size="8"),
                         rx.flex(
                             rx.select(
-                                ["Male", "Female", "Non-Binary", "2-Spirit",
-                                 "Prefer not to disclose"],
+                                GENDERS,
                                 name="gender",
                                 placeholder="Gender",
                             ),
@@ -58,7 +55,7 @@ def onboarding() -> rx.Component:
                                 placeholder="Weight",
                             ),
                             rx.select(
-                                ["None", "Low", "Medium", "High", "Extreme"],
+                                ACTIVITY_LEVELS,
                                 name="activity_level",
                                 placeholder="Activity Level",
                             ),
@@ -70,7 +67,7 @@ def onboarding() -> rx.Component:
 
                     rx.flex(
                         rx.select(
-                            ["Micro-Nutrients", "Weight Loss", "Main Gain", "Cut"],
+                            GOALS,
                             name="current_goal",
                             placeholder="Current Goal",
                         ),
