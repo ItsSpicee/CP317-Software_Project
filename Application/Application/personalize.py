@@ -2,32 +2,79 @@ import reflex as rx
 import json
 from pathlib import Path
 
+
 PARENT_DIR = Path(__file__).resolve().parent.parent
 USER_DATA_FOLDER = PARENT_DIR / "User Data"
 
 PRIORITY_MACRO = ["Protein", "Carbs", "Fat"]
 
 DIETS = ["Vegetarian", "Vegan", "Keto", "Gluten Free", "Carnivore", "Animal Based"]
-class LiveSliderState(rx.State):
+GOALS = ["Micro-Nutrients", "Weight Loss", "Main Gain", "Cut"]
+
+FOOD_ALLERGIES = [
+    "Eggs",
+    "Milk",
+    "Mustard",
+    "Peanuts",
+    "Crustaceans",
+    "Fish",
+    "Sesame seeds",
+    "Soy",
+    "Sulphites",
+    "Tree nuts"
+]
+
+class PersonalizationState(rx.State):
+    allergies: list[str] = []
+    diet_types: list[str] = []
     fiber: float = 30.0
+
+    @rx.event
+    def toggle_allergy(self, allergy: str, checked: bool):
+        if checked and allergy not in self.allergies:
+            self.allergies.append(allergy)
+        elif not checked and allergy in self.allergies:
+            self.allergies.remove(allergy)
+
+    @rx.event
+    def toggle_diet(self, diet: str, checked: bool):
+        if checked and diet not in self.diet_types:
+            self.diet_types.append(diet)
+        elif not checked and diet in self.diet_types:
+            self.diet_types.remove(diet)
 
     @rx.event
     def set_fiber(self, value: list[int | float]):
         self.fiber = value[0]
-        print((self.fiber))
 
-class ButtonEvent(rx.State):
-
+    @rx.event
     def cancel(self):
         return rx.redirect("/")
 
-    def submit(self, form_data: dict):
-        # Save the submitted information.
+    @rx.event
+    def submit(self, form_data):
+        form_data["allergies"] = list(self.allergies)
+        form_data["diet_types"] = list(self.diet_types)
+        form_data["fiber"] = self.fiber
+
         with open(USER_DATA_FOLDER / "user_personalization_data.json", "w", encoding="utf-8") as f:
             json.dump(form_data, f, indent=4)
 
-        # Redirect after processing the submitted data.
-        return rx.redirect("/personalize")
+        return rx.redirect("/targets")
+
+
+def allergy_checkbox(allergy: str) -> rx.Component:
+    return rx.checkbox(
+        allergy,
+        on_change=lambda checked: PersonalizationState.toggle_allergy(allergy, checked),
+    )
+
+
+def diet_checkbox(diet: str) -> rx.Component:
+    return rx.checkbox(
+        diet,
+        on_change=lambda checked: PersonalizationState.toggle_diet(diet, checked),
+    )
 
 def personalize() -> rx.Component:
     return rx.container(
@@ -35,7 +82,7 @@ def personalize() -> rx.Component:
 
         rx.form(
             rx.vstack(
-                # Keep your original horizontal layout.
+                # Keep original horizontal layout.
                 rx.flex(
                     rx.vstack(
                         rx.heading("Optional", size="8"),
@@ -44,7 +91,11 @@ def personalize() -> rx.Component:
                         justify="center",
                         min_height="85vh",
                     ),
-
+                    rx.separator(
+                        orientation = "vertical",
+                        size = "4",
+                        height="45vh",
+                    ),
                     rx.vstack(
                         rx.heading("Further Personalization:", size="8"),
                         rx.flex(
@@ -61,21 +112,29 @@ def personalize() -> rx.Component:
                             rx.vstack(
                                 rx.text(
                                     "Fiber Target ",
-                                    LiveSliderState.fiber,
+                                    PersonalizationState.fiber,
                                     " grams",
                                 ),
                                 rx.slider(
                                     name="fiber",
-                                    value=[LiveSliderState.fiber],
+                                    value=[PersonalizationState.fiber],
                                     min_=0,
                                     max=100,
-                                    on_change=LiveSliderState.set_fiber,
+                                    on_change=PersonalizationState.set_fiber,
                                 ),
                             ),
+                            
+                            rx.select(
+                                GOALS,
+                                name="current_goal",
+                                placeholder="Current Goal",
+                            ),
+                        
                             direction="column",
                             spacing="5",
                         ),
                         justify="center",
+                        
                     ),
 
                     rx.flex(
@@ -84,21 +143,22 @@ def personalize() -> rx.Component:
                                 "Allergies"
                             ),
                             rx.flex(
-                                rx.foreach(
-                                    rx.Var.range(4),
-                                    lambda i: rx.checkbox(f"Food {i + 1}", width="15%"),
-                                ),
+                                *[
+                                    allergy_checkbox(allergy)
+                                    for allergy in FOOD_ALLERGIES
+                                ],
                                 spacing="2",
                                 flex_wrap="wrap",
-                                width="100%",
+                                width="130%",
                                 align = "center",
                             ),
+                            rx.separator(),
                             rx.heading(
                                 "Diet Types"
                             ),
                             rx.flex(
                                 *[
-                                    rx.checkbox(diet, name="diet_types", value=diet)
+                                    diet_checkbox(diet)
                                     for diet in DIETS
                                 ],
                                 spacing="2",
@@ -116,6 +176,8 @@ def personalize() -> rx.Component:
                     justify="center",
                     spacing="9",
                     width="100%",
+                    align = "center"
+                    
                     
                 ),
 
@@ -124,7 +186,7 @@ def personalize() -> rx.Component:
                     rx.button(
                         "Cancel",
                         type="button",
-                        on_click=ButtonEvent.cancel,
+                        on_click=PersonalizationState.cancel,
                     ),
                     rx.button(
                         "Skip",
@@ -138,12 +200,14 @@ def personalize() -> rx.Component:
                     spacing="5",
                     justify="end",
                     width="100%",
+                    
                 ),
 
                 width="100%",
                 spacing="5",
+                
             ),
-            on_submit=ButtonEvent.submit,
+            on_submit=PersonalizationState.submit,
             width="100%",
         ),
         width="100%",

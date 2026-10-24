@@ -2,6 +2,7 @@ import reflex as rx
 from rxconfig import config
 from .onboarding import onboarding
 from .personalize import personalize
+from .target_calculations import targets
 
 
 class State(rx.State):
@@ -33,4 +34,4 @@ app = rx.App()
 app.add_page(index)
 app.add_page(onboarding, route="/onboarding")
 app.add_page(personalize, route="/personalize")
-
+app.add_page(targets, route="/targets")

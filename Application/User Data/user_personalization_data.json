@@ -1,7 +1,26 @@
 {
-    "gender": "",
-    "height": "",
-    "weight": "",
-    "activity_level": "",
-    "current_goal": ""
+    "calories": "",
+    "priority_macro": "",
+    "fiber": 100,
+    "current_goal": "",
+    "allergies": [
+        "Tree nuts",
+        "Sulphites",
+        "Soy",
+        "Sesame seeds",
+        "Eggs",
+        "Milk",
+        "Mustard",
+        "Peanuts",
+        "Fish",
+        "Crustaceans"
+    ],
+    "diet_types": [
+        "Gluten Free",
+        "Vegan",
+        "Keto",
+        "Carnivore",
+        "Vegetarian",
+        "Animal Based"
+    ]
 }
