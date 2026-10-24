@@ -9,7 +9,8 @@ USER_DATA_FOLDER = PARENT_DIR / "User Data"
 PRIORITY_MACRO = ["Protein", "Carbs", "Fat"]
 
 DIETS = ["Vegetarian", "Vegan", "Keto", "Gluten Free", "Carnivore", "Animal Based"]
-GOALS = ["Micro-Nutrients", "Weight Loss", "Main Gain", "Cut"]
+# Only goals with a defined target calculation are offered here.
+GOALS = ["Weight Gain", "Weight Loss", "Main Gain"]
 
 FOOD_ALLERGIES = [
     "Eggs",
@@ -28,6 +29,16 @@ class PersonalizationState(rx.State):
     allergies: list[str] = []
     diet_types: list[str] = []
     fiber: float = 30.0
+
+    @rx.event
+    def load_saved_fiber(self):
+        try:
+            with open(USER_DATA_FOLDER / "user_personalization_data.json", "r", encoding="utf-8") as f:
+                saved_data = json.load(f)
+            value = float(saved_data.get("fiber", 30)) if isinstance(saved_data, dict) else 30.0
+            self.fiber = min(max(value, 0.0), 100.0)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            self.fiber = 30.0
 
     @rx.event
     def toggle_allergy(self, allergy: str, checked: bool):
@@ -53,6 +64,14 @@ class PersonalizationState(rx.State):
 
     @rx.event
     def submit(self, form_data):
+        try:
+            calories = float(form_data.get("calories", ""))
+            if not 0 <= calories <= 10_000:
+                calories = ""
+        except (TypeError, ValueError):
+            calories = ""
+        form_data["calories"] = calories
+        self.fiber = min(max(float(self.fiber), 0.0), 100.0)
         form_data["allergies"] = list(self.allergies)
         form_data["diet_types"] = list(self.diet_types)
         form_data["fiber"] = self.fiber
@@ -100,9 +119,13 @@ def personalize() -> rx.Component:
                         rx.heading("Further Personalization:", size="8"),
                         rx.flex(
                             rx.input(
-                                placeholder = "Calorie Target",
-                                name = "calories",
-                                input_mode = "numeric"
+                                placeholder="Calorie Target (optional)",
+                                name="calories",
+                                type="number",
+                                min=0,
+                                max=10_000,
+                                step=1,
+                                width="110%",
                             ),
                             rx.select(
                                 PRIORITY_MACRO,
@@ -183,6 +206,10 @@ def personalize() -> rx.Component:
 
                 # Keep the buttons horizontally aligned.
                 rx.flex(
+                    rx.link(
+                        rx.button("Back", type="button"),
+                        href="/onboarding",
+                    ),
                     rx.button(
                         "Cancel",
                         type="button",

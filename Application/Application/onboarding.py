@@ -21,17 +21,29 @@ class ButtonEvent(rx.State):
             height = float(form_data.get("height", ""))
             if form_data.get("height_unit", "cm") == "in":
                 height *= 2.54
-            form_data["height"] = height
+            if not 90 <= height <= 250:
+                height = ""
         except (TypeError, ValueError):
-            form_data["height"] = ""
+            height = ""
+        form_data["height"] = height
 
         try:
             weight = float(form_data.get("weight", ""))
             if form_data.get("weight_unit", "kg") == "lb":
                 weight *= 0.45359237
-            form_data["weight"] = weight
+            if not 30 <= weight <= 300:
+                weight = ""
         except (TypeError, ValueError):
-            form_data["weight"] = ""
+            weight = ""
+        form_data["weight"] = weight
+
+        try:
+            age = float(form_data.get("age", ""))
+            if not 13 <= age <= 120:
+                age = ""
+        except (TypeError, ValueError):
+            age = ""
+        form_data["age"] = age
 
         form_data.pop("height_unit", None)
         form_data.pop("weight_unit", None)
@@ -70,8 +82,17 @@ def onboarding() -> rx.Component:
                                 name="sex",
                                 placeholder="Sex",
                             ),
+                            rx.select(
+                                ACTIVITY_LEVELS,
+                                name="activity_level",
+                                default_value="Low",
+                                placeholder="Activity Level",
+                            ),
                             rx.hstack(
-                                rx.input(name="height", placeholder="Height"),
+                                rx.input(
+                                    name="height", placeholder="Height", type="number",
+                                    min=35, max=250, step="any",
+                                ),
                                 rx.select(
                                     HEIGHT_UNITS,
                                     name="height_unit",
@@ -80,7 +101,10 @@ def onboarding() -> rx.Component:
                                 ),
                             ),
                             rx.hstack(
-                                rx.input(name="weight", placeholder="Weight"),
+                                rx.input(
+                                    name="weight", placeholder="Weight", type="number",
+                                    min=30, max=660, step="any",
+                                ),
                                 rx.select(
                                     WEIGHT_UNITS,
                                     name="weight_unit",
@@ -91,6 +115,10 @@ def onboarding() -> rx.Component:
                             rx.input(
                                 name="age",
                                 placeholder="Age",
+                                type="number",
+                                min=13,
+                                max=120,
+                                step=1,
                             ),
                             direction="column",
                             spacing="5",
@@ -107,6 +135,10 @@ def onboarding() -> rx.Component:
 
                 # Keep the buttons horizontally aligned.
                 rx.flex(
+                    rx.link(
+                        rx.button("Back", type="button"),
+                        href="/",
+                    ),
                     rx.button(
                         "Cancel",
                         type="button",

@@ -1,8 +1,8 @@
 import reflex as rx
 from rxconfig import config
 from .onboarding import onboarding
-from .personalize import personalize
-from .target_calculations import targets
+from .personalize import PersonalizationState, personalize
+from .target_calculations import TargetState, targets
 
 
 class State(rx.State):
@@ -33,5 +33,5 @@ def index() -> rx.Component:
 app = rx.App()
 app.add_page(index)
 app.add_page(onboarding, route="/onboarding")
-app.add_page(personalize, route="/personalize")
-app.add_page(targets, route="/targets")
+app.add_page(personalize, route="/personalize", on_load=PersonalizationState.load_saved_fiber)
+app.add_page(targets, route="/targets", on_load=TargetState.load_targets)

@@ -1,6 +1,7 @@
 {
-    "sex": "Female",
-    "height": "",
-    "weight": "",
-    "age": ""
+    "sex": "Male",
+    "activity_level": "Medium",
+    "height": 180.0,
+    "weight": 75.0,
+    "age": 26.0
 }

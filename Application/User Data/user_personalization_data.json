@@ -1,26 +1,8 @@
 {
     "calories": "",
-    "priority_macro": "",
-    "fiber": 100,
-    "current_goal": "",
-    "allergies": [
-        "Tree nuts",
-        "Sulphites",
-        "Soy",
-        "Sesame seeds",
-        "Eggs",
-        "Milk",
-        "Mustard",
-        "Peanuts",
-        "Fish",
-        "Crustaceans"
-    ],
-    "diet_types": [
-        "Gluten Free",
-        "Vegan",
-        "Keto",
-        "Carnivore",
-        "Vegetarian",
-        "Animal Based"
-    ]
+    "priority_macro": "Protein",
+    "fiber": 30.0,
+    "current_goal": "Main Gain",
+    "allergies": [],
+    "diet_types": []
 }
