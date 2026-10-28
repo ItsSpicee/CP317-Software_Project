@@ -2,6 +2,8 @@ import reflex as rx
 import json
 from pathlib import Path
 
+from .ui import actions, entry, field, go, menu, page, press, steps
+
 PARENT_DIR = Path(__file__).resolve().parent.parent
 USER_DATA_FOLDER = PARENT_DIR / "User Data"
 
@@ -55,114 +57,112 @@ class ButtonEvent(rx.State):
         return rx.redirect("/personalize")
 
 def onboarding() -> rx.Component:
-    return rx.container(
-        rx.color_mode.button(position="top-right"),
-
-        rx.form(
-            rx.vstack(
-                # Keep your original horizontal layout.
-                rx.flex(
-                    rx.vstack(
-                        rx.heading("Welcome to NutriSpoke!", size="8"),
-                        rx.text("Tell us a little bit about yourself."),
-                        spacing="5",
-                        justify="center",
-                        min_height="85vh",
-                    ),
-                    rx.separator(
-                        orientation = "vertical",
-                        size = "4",
-                        height = "45vh"
-                    ),
-                    rx.vstack(
-                        rx.heading("Your information:", size="8"),
-                        rx.flex(
-                            rx.select(
-                                SEX,
-                                name="sex",
-                                placeholder="Sex",
-                            ),
-                            rx.select(
+    return page(
+        rx.el.div(
+            steps(1),
+            rx.el.p("Step 1", class_name="ns-kicker"),
+            rx.el.h1("About you", class_name="ns-title"),
+            rx.el.p(
+                "Sex, age, size, and activity set the maintenance estimate. Leave something blank and a typical adult value is used.",
+                class_name="ns-lede",
+            ),
+            rx.form(
+                rx.el.div(
+                    rx.el.div(
+                        field(
+                            "Sex",
+                            menu(SEX, name="sex", id="sex", placeholder="Select"),
+                            for_id="sex",
+                        ),
+                        field(
+                            "Activity",
+                            menu(
                                 ACTIVITY_LEVELS,
                                 name="activity_level",
+                                id="activity_level",
                                 default_value="Low",
-                                placeholder="Activity Level",
                             ),
-                            rx.hstack(
-                                rx.input(
-                                    name="height", placeholder="Height", type="number",
-                                    min=35, max=250, step="any",
+                            "Low is the default.",
+                            for_id="activity_level",
+                        ),
+                        class_name="ns-row",
+                    ),
+                    rx.el.div(
+                        field(
+                            "Height",
+                            rx.el.div(
+                                entry(
+                                    name="height",
+                                    id="height",
+                                    type="number",
+                                    min=35,
+                                    max=250,
+                                    step="any",
                                 ),
-                                rx.select(
+                                menu(
                                     HEIGHT_UNITS,
                                     name="height_unit",
                                     default_value="cm",
-                                    width="80px",
+                                    custom_attrs={"aria-label": "Height unit"},
                                 ),
+                                class_name="ns-unit",
                             ),
-                            rx.hstack(
-                                rx.input(
-                                    name="weight", placeholder="Weight", type="number",
-                                    min=30, max=660, step="any",
+                            "90–250 cm after conversion.",
+                            for_id="height",
+                        ),
+                        field(
+                            "Weight",
+                            rx.el.div(
+                                entry(
+                                    name="weight",
+                                    id="weight",
+                                    type="number",
+                                    min=30,
+                                    max=660,
+                                    step="any",
                                 ),
-                                rx.select(
+                                menu(
                                     WEIGHT_UNITS,
                                     name="weight_unit",
                                     default_value="kg",
-                                    width="80px",
+                                    custom_attrs={"aria-label": "Weight unit"},
                                 ),
+                                class_name="ns-unit",
                             ),
-                            rx.input(
-                                name="age",
-                                placeholder="Age",
-                                type="number",
-                                min=13,
-                                max=120,
-                                step=1,
-                            ),
-                            direction="column",
-                            spacing="5",
+                            "30–300 kg after conversion.",
+                            for_id="weight",
                         ),
-                        justify="center",
+                        class_name="ns-row",
                     ),
-
-                    
-
-                    spacing="6",
-                    width="100%",
-                    align = "center"
+                    field(
+                        "Age",
+                        entry(
+                            name="age",
+                            id="age",
+                            type="number",
+                            min=13,
+                            max=120,
+                            step=1,
+                        ),
+                        "13–120 years.",
+                        for_id="age",
+                        class_name="ns-field-half",
+                    ),
+                    actions(
+                        [
+                            go("Back", "/"),
+                            press("Cancel", "ghost", type="button", on_click=ButtonEvent.cancel),
+                        ],
+                        [
+                            press("Skip", "secondary", type="submit"),
+                            press("Submit", "primary", type="submit"),
+                        ],
+                    ),
+                    class_name="ns-stack",
                 ),
-
-                # Keep the buttons horizontally aligned.
-                rx.flex(
-                    rx.link(
-                        rx.button("Back", type="button"),
-                        href="/",
-                    ),
-                    rx.button(
-                        "Cancel",
-                        type="button",
-                        on_click=ButtonEvent.cancel,
-                    ),
-                    rx.button(
-                        "Skip",
-                        type="submit",
-                    ),
-                    rx.button(
-                        "Submit",
-                        type="submit",
-                    ),
-                    direction="row",
-                    spacing="5",
-                    justify="end",
-                    width="100%",
-                ),
-
-                width="100%",
-                spacing="5",
+                on_submit=ButtonEvent.submit,
             ),
-            on_submit=ButtonEvent.submit,
-            width="100%",
+            class_name="ns-sheet",
         ),
-        width="100%",
+        current="profile",
     )
