@@ -2,3 +2,5 @@
 venv/
 ENV/
 environment/
+Application/User Data/user_data.json
+Application/User Data/user_personalization_data.json
