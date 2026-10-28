@@ -2,6 +2,8 @@ import reflex as rx
 import json
 from pathlib import Path
 
+from .ui import actions, entry, field, go, menu, page, press, steps
+
 
 PARENT_DIR = Path(__file__).resolve().parent.parent
 USER_DATA_FOLDER = PARENT_DIR / "User Data"
@@ -58,6 +60,10 @@ class PersonalizationState(rx.State):
     def set_fiber(self, value: list[int | float]):
         self.fiber = value[0]
 
+    @rx.var
+    def fiber_label(self) -> str:
+        return f"{float(self.fiber):.0f}"
+
     @rx.event
     def cancel(self):
         return rx.redirect("/")
@@ -83,159 +89,147 @@ class PersonalizationState(rx.State):
 
 
 def allergy_checkbox(allergy: str) -> rx.Component:
-    return rx.checkbox(
-        allergy,
-        on_change=lambda checked: PersonalizationState.toggle_allergy(allergy, checked),
+    return rx.box(
+        rx.checkbox(
+            allergy,
+            size="2",
+            color_scheme="jade",
+            on_change=lambda checked: PersonalizationState.toggle_allergy(allergy, checked),
+        ),
+        class_name="ns-choice",
     )
 
 
 def diet_checkbox(diet: str) -> rx.Component:
-    return rx.checkbox(
-        diet,
-        on_change=lambda checked: PersonalizationState.toggle_diet(diet, checked),
+    return rx.box(
+        rx.checkbox(
+            diet,
+            size="2",
+            color_scheme="jade",
+            on_change=lambda checked: PersonalizationState.toggle_diet(diet, checked),
+        ),
+        class_name="ns-choice",
     )
 
-def personalize() -> rx.Component:
-    return rx.container(
-        rx.color_mode.button(position="top-right"),
 
-        rx.form(
-            rx.vstack(
-                # Keep original horizontal layout.
-                rx.flex(
-                    rx.vstack(
-                        rx.heading("Optional", size="8"),
-                        rx.text("Let's personalize your nutrition plan."),
-                        spacing="5",
-                        justify="center",
-                        min_height="85vh",
-                    ),
-                    rx.separator(
-                        orientation = "vertical",
-                        size = "4",
-                        height="45vh",
-                    ),
-                    rx.vstack(
-                        rx.heading("Further Personalization:", size="8"),
-                        rx.flex(
-                            rx.input(
-                                placeholder="Calorie Target (optional)",
+def personalize() -> rx.Component:
+    return page(
+        rx.el.div(
+            steps(2),
+            rx.el.p("Step 2", class_name="ns-kicker"),
+            rx.el.h1("Preferences", class_name="ns-title"),
+            rx.el.p(
+                "Optional. Skip this if you only want the estimate from your profile.",
+                class_name="ns-lede",
+            ),
+            rx.form(
+                rx.el.div(
+                    rx.el.div(
+                        field(
+                            "Calorie target",
+                            entry(
                                 name="calories",
+                                id="calories",
                                 type="number",
                                 min=0,
                                 max=10_000,
                                 step=1,
-                                width="110%",
+                                placeholder="Optional",
                             ),
-                            rx.select(
+                            "0–10,000. A number here replaces the estimate.",
+                            for_id="calories",
+                        ),
+                        field(
+                            "Priority macro",
+                            menu(
                                 PRIORITY_MACRO,
                                 name="priority_macro",
-                                placeholder="Priority Macro",
+                                id="priority_macro",
+                                placeholder="Select",
                             ),
-                            rx.vstack(
-                                rx.text(
-                                    "Fiber Target ",
-                                    PersonalizationState.fiber,
-                                    " grams",
-                                ),
-                                rx.slider(
-                                    name="fiber",
-                                    value=[PersonalizationState.fiber],
-                                    min_=0,
-                                    max=100,
-                                    on_change=PersonalizationState.set_fiber,
-                                ),
-                            ),
-                            
-                            rx.select(
-                                GOALS,
-                                name="current_goal",
-                                placeholder="Current Goal",
-                            ),
-                        
-                            direction="column",
-                            spacing="5",
+                            for_id="priority_macro",
                         ),
-                        justify="center",
-                        
+                        class_name="ns-row",
                     ),
-
-                    rx.flex(
-                        rx.vstack(
-                            rx.heading(
-                                "Allergies"
+                    rx.el.div(
+                        rx.el.div(
+                            rx.el.label("Fiber", class_name="ns-label", html_for="fiber"),
+                            rx.el.span(
+                                PersonalizationState.fiber_label,
+                                " g",
+                                class_name="ns-fiber-value",
                             ),
-                            rx.flex(
-                                *[
-                                    allergy_checkbox(allergy)
-                                    for allergy in FOOD_ALLERGIES
-                                ],
-                                spacing="2",
-                                flex_wrap="wrap",
-                                width="130%",
-                                align = "center",
-                            ),
-                            rx.separator(),
-                            rx.heading(
-                                "Diet Types"
-                            ),
-                            rx.flex(
-                                *[
-                                    diet_checkbox(diet)
-                                    for diet in DIETS
-                                ],
-                                spacing="2",
-                                flex_wrap="wrap",
-                                width="100%",
-                                align = "center",
-                            ),
-                            spacing="2",
-                            flex_wrap="wrap",
-                            width="100%",
-                            justify="center",
-                            align = "center",
-                        )
+                            class_name="ns-fiber-head",
+                        ),
+                        rx.slider(
+                            id="fiber",
+                            name="fiber",
+                            value=[PersonalizationState.fiber],
+                            min=0,
+                            max=100,
+                            step=1,
+                            color_scheme="jade",
+                            on_change=PersonalizationState.set_fiber,
+                            aria_label="Fiber target in grams",
+                        ),
+                        rx.el.p(
+                            "0–100 g. You choose this. It is not estimated.",
+                            class_name="ns-hint",
+                        ),
+                        class_name="ns-field",
                     ),
-                    justify="center",
-                    spacing="9",
-                    width="100%",
-                    align = "center"
-                    
-                    
+                    field(
+                        "Goal",
+                        menu(
+                            GOALS,
+                            name="current_goal",
+                            id="current_goal",
+                            placeholder="Select",
+                        ),
+                        for_id="current_goal",
+                    ),
+                    rx.el.ul(
+                        rx.el.li("Weight Gain adds 200 kcal to maintenance."),
+                        rx.el.li("Weight Loss subtracts 200 kcal."),
+                        rx.el.li("Main Gain stays at maintenance and shifts a little toward protein."),
+                        class_name="ns-notes",
+                    ),
+                    rx.el.div(
+                        rx.el.h2("Allergies", class_name="ns-label"),
+                        rx.el.div(
+                            *[allergy_checkbox(allergy) for allergy in FOOD_ALLERGIES],
+                            class_name="ns-choices",
+                        ),
+                        class_name="ns-group",
+                    ),
+                    rx.el.div(
+                        rx.el.h2("Diet types", class_name="ns-label"),
+                        rx.el.div(
+                            *[diet_checkbox(diet) for diet in DIETS],
+                            class_name="ns-choices",
+                        ),
+                        class_name="ns-group",
+                    ),
+                    actions(
+                        [
+                            go("Back", "/onboarding"),
+                            press(
+                                "Cancel",
+                                "ghost",
+                                type="button",
+                                on_click=PersonalizationState.cancel,
+                            ),
+                        ],
+                        [
+                            press("Skip", "secondary", type="submit"),
+                            press("Submit", "primary", type="submit"),
+                        ],
+                    ),
+                    class_name="ns-stack",
                 ),
-
-                # Keep the buttons horizontally aligned.
-                rx.flex(
-                    rx.link(
-                        rx.button("Back", type="button"),
-                        href="/onboarding",
-                    ),
-                    rx.button(
-                        "Cancel",
-                        type="button",
-                        on_click=PersonalizationState.cancel,
-                    ),
-                    rx.button(
-                        "Skip",
-                        type="submit",
-                    ),
-                    rx.button(
-                        "Submit",
-                        type="submit",
-                    ),
-                    direction="row",
-                    spacing="5",
-                    justify="end",
-                    width="100%",
-                    
-                ),
-
-                width="100%",
-                spacing="5",
-                
+                on_submit=PersonalizationState.submit,
             ),
-            on_submit=PersonalizationState.submit,
-            width="100%",
+            class_name="ns-sheet",
         ),
-        width="100%",
+        current="preferences",
     )
