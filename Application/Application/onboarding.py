@@ -13,38 +13,83 @@ HEIGHT_UNITS = ["cm", "in"]
 WEIGHT_UNITS = ["kg", "lb"]
 
 class ButtonEvent(rx.State):
+    sex_error: str = ""
+    activity_error: str = ""
+    height_error: str = ""
+    weight_error: str = ""
+    age_error: str = ""
 
     def cancel(self):
         return rx.redirect("/")
 
     def submit(self, form_data: dict):
-        # Store height and weight in metric units for the rest of the app.
-        try:
-            height = float(form_data.get("height", ""))
-            if form_data.get("height_unit", "cm") == "in":
-                height *= 2.54
-            if not 90 <= height <= 250:
+        self.sex_error = ""
+        self.activity_error = ""
+        self.height_error = ""
+        self.weight_error = ""
+        self.age_error = ""
+
+        sex = form_data.get("sex", "")
+        if sex and sex not in SEX:
+            self.sex_error = "Choose one of the listed options."
+
+        activity = form_data.get("activity_level", "Low")
+        if activity and activity not in ACTIVITY_LEVELS:
+            self.activity_error = "Choose one of the listed options."
+
+        # Blank measurements are optional; supplied values must be valid.
+        raw_height = form_data.get("height", "")
+        height = ""
+        if raw_height not in (None, ""):
+            try:
+                height = float(raw_height)
+                height_unit = form_data.get("height_unit", "cm")
+                if height_unit not in HEIGHT_UNITS:
+                    self.height_error = "Choose cm or in for the height unit."
+                elif height_unit == "in":
+                    height *= 2.54
+                if not self.height_error and not 90 <= height <= 250:
+                    self.height_error = "Enter a height from 90 to 250 cm after conversion."
+            except (TypeError, ValueError):
+                self.height_error = "Enter a valid height, or leave it blank."
+            if self.height_error:
                 height = ""
-        except (TypeError, ValueError):
-            height = ""
-        form_data["height"] = height
 
-        try:
-            weight = float(form_data.get("weight", ""))
-            if form_data.get("weight_unit", "kg") == "lb":
-                weight *= 0.45359237
-            if not 30 <= weight <= 300:
+        raw_weight = form_data.get("weight", "")
+        weight = ""
+        if raw_weight not in (None, ""):
+            try:
+                weight = float(raw_weight)
+                weight_unit = form_data.get("weight_unit", "kg")
+                if weight_unit not in WEIGHT_UNITS:
+                    self.weight_error = "Choose kg or lb for the weight unit."
+                elif weight_unit == "lb":
+                    weight *= 0.45359237
+                if not self.weight_error and not 30 <= weight <= 300:
+                    self.weight_error = "Enter a weight from 30 to 300 kg after conversion."
+            except (TypeError, ValueError):
+                self.weight_error = "Enter a valid weight, or leave it blank."
+            if self.weight_error:
                 weight = ""
-        except (TypeError, ValueError):
-            weight = ""
-        form_data["weight"] = weight
 
-        try:
-            age = float(form_data.get("age", ""))
-            if not 13 <= age <= 120:
+        raw_age = form_data.get("age", "")
+        age = ""
+        if raw_age not in (None, ""):
+            try:
+                age = float(raw_age)
+                if not 13 <= age <= 120 or not age.is_integer():
+                    self.age_error = "Enter an age from 13 to 120, or leave it blank."
+            except (TypeError, ValueError):
+                self.age_error = "Enter a valid age, or leave it blank."
+            if self.age_error:
                 age = ""
-        except (TypeError, ValueError):
-            age = ""
+
+        if any((self.sex_error, self.activity_error, self.height_error, self.weight_error, self.age_error)):
+            return
+
+        # Store height and weight in metric units for the rest of the app.
+        form_data["height"] = height
+        form_data["weight"] = weight
         form_data["age"] = age
 
         form_data.pop("height_unit", None)
@@ -71,8 +116,15 @@ def onboarding() -> rx.Component:
                     rx.el.div(
                         field(
                             "Sex",
-                            menu(SEX, name="sex", id="sex", placeholder="Select"),
+                            menu(
+                                SEX,
+                                name="sex",
+                                id="sex",
+                                placeholder="Select",
+                                aria_invalid=ButtonEvent.sex_error != "",
+                            ),
                             for_id="sex",
+                            error=ButtonEvent.sex_error,
                         ),
                         field(
                             "Activity",
@@ -81,9 +133,11 @@ def onboarding() -> rx.Component:
                                 name="activity_level",
                                 id="activity_level",
                                 default_value="Low",
+                                aria_invalid=ButtonEvent.activity_error != "",
                             ),
                             "Low is the default.",
                             for_id="activity_level",
+                            error=ButtonEvent.activity_error,
                         ),
                         class_name="ns-row",
                     ),
@@ -98,6 +152,7 @@ def onboarding() -> rx.Component:
                                     min=35,
                                     max=250,
                                     step="any",
+                                    aria_invalid=ButtonEvent.height_error != "",
                                 ),
                                 menu(
                                     HEIGHT_UNITS,
@@ -109,6 +164,7 @@ def onboarding() -> rx.Component:
                             ),
                             "90–250 cm after conversion.",
                             for_id="height",
+                            error=ButtonEvent.height_error,
                         ),
                         field(
                             "Weight",
@@ -120,6 +176,7 @@ def onboarding() -> rx.Component:
                                     min=30,
                                     max=660,
                                     step="any",
+                                    aria_invalid=ButtonEvent.weight_error != "",
                                 ),
                                 menu(
                                     WEIGHT_UNITS,
@@ -131,6 +188,7 @@ def onboarding() -> rx.Component:
                             ),
                             "30–300 kg after conversion.",
                             for_id="weight",
+                            error=ButtonEvent.weight_error,
                         ),
                         class_name="ns-row",
                     ),
@@ -143,10 +201,12 @@ def onboarding() -> rx.Component:
                             min=13,
                             max=120,
                             step=1,
+                            aria_invalid=ButtonEvent.age_error != "",
                         ),
                         "13–120 years.",
                         for_id="age",
                         class_name="ns-field-half",
+                        error=ButtonEvent.age_error,
                     ),
                     actions(
                         [
@@ -161,6 +221,7 @@ def onboarding() -> rx.Component:
                     class_name="ns-stack",
                 ),
                 on_submit=ButtonEvent.submit,
+                no_validate=True,
             ),
             class_name="ns-sheet",
         ),

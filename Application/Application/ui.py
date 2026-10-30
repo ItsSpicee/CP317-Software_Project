@@ -82,6 +82,7 @@ def field(
     hint: str = "",
     for_id: str = "",
     class_name: str = "",
+    error="",
 ) -> rx.Component:
     label_props: dict = {"class_name": "ns-label"}
     if for_id:
@@ -92,6 +93,13 @@ def field(
     ]
     if hint:
         children.append(rx.el.p(hint, class_name="ns-hint"))
+    children.append(
+        rx.cond(
+            error != "",
+            rx.el.p(error, class_name="ns-error", role="alert"),
+            rx.fragment(),
+        )
+    )
     classes = "ns-field" if not class_name else f"ns-field {class_name}"
     return rx.el.div(*children, class_name=classes)
 

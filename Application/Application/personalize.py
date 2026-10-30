@@ -1,5 +1,6 @@
 import reflex as rx
 import json
+import math
 from pathlib import Path
 
 from .ui import actions, entry, field, go, menu, page, press, steps
@@ -8,11 +9,8 @@ from .ui import actions, entry, field, go, menu, page, press, steps
 PARENT_DIR = Path(__file__).resolve().parent.parent
 USER_DATA_FOLDER = PARENT_DIR / "User Data"
 
-PRIORITY_MACRO = ["Protein", "Carbs", "Fat"]
-
 DIETS = ["Vegetarian", "Vegan", "Keto", "Gluten Free", "Carnivore", "Animal Based"]
-# Only goals with a defined target calculation are offered here.
-GOALS = ["Weight Gain", "Weight Loss", "Main Gain"]
+GOALS = ["Maintenance", "Weight Gain", "Weight Loss"]
 
 FOOD_ALLERGIES = [
     "Eggs",
@@ -31,6 +29,9 @@ class PersonalizationState(rx.State):
     allergies: list[str] = []
     diet_types: list[str] = []
     fiber: float = 30.0
+    muscle_gain: bool = False
+    calories_error: str = ""
+    goal_error: str = ""
 
     @rx.event
     def load_saved_fiber(self):
@@ -39,8 +40,23 @@ class PersonalizationState(rx.State):
                 saved_data = json.load(f)
             value = float(saved_data.get("fiber", 30)) if isinstance(saved_data, dict) else 30.0
             self.fiber = min(max(value, 0.0), 100.0)
+            if isinstance(saved_data, dict):
+                stored_muscle_gain = saved_data.get("muscle_gain")
+                if isinstance(stored_muscle_gain, bool):
+                    self.muscle_gain = stored_muscle_gain
+                else:
+                    legacy_goal = str(saved_data.get("current_goal", "")).strip().lower()
+                    legacy_macro = str(saved_data.get("priority_macro", "")).strip().lower()
+                    self.muscle_gain = legacy_goal == "main gain" or legacy_macro == "protein"
+            else:
+                self.muscle_gain = False
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             self.fiber = 30.0
+            self.muscle_gain = False
+
+    @rx.event
+    def set_muscle_gain(self, checked: bool):
+        self.muscle_gain = checked
 
     @rx.event
     def toggle_allergy(self, allergy: str, checked: bool):
@@ -70,13 +86,33 @@ class PersonalizationState(rx.State):
 
     @rx.event
     def submit(self, form_data):
-        try:
-            calories = float(form_data.get("calories", ""))
-            if not 0 <= calories <= 10_000:
-                calories = ""
-        except (TypeError, ValueError):
-            calories = ""
+        self.calories_error = ""
+        self.goal_error = ""
+
+        raw_calories = form_data.get("calories", "")
+        calories = ""
+        if raw_calories not in (None, ""):
+            try:
+                calories = float(raw_calories)
+                if (
+                    not math.isfinite(calories)
+                    or not 0 <= calories <= 10_000
+                    or not calories.is_integer()
+                ):
+                    self.calories_error = "Enter a whole number from 0 to 10,000, or leave it blank."
+            except (TypeError, ValueError):
+                self.calories_error = "Enter a valid calorie target, or leave it blank."
+
+        current_goal = form_data.get("current_goal", "Maintenance") or "Maintenance"
+        if current_goal and current_goal not in GOALS:
+            self.goal_error = "Choose one of the listed options."
+
+        if any((self.calories_error, self.goal_error)):
+            return
+
         form_data["calories"] = calories
+        form_data["current_goal"] = current_goal
+        form_data["muscle_gain"] = bool(self.muscle_gain)
         self.fiber = min(max(float(self.fiber), 0.0), 100.0)
         form_data["allergies"] = list(self.allergies)
         form_data["diet_types"] = list(self.diet_types)
@@ -135,19 +171,21 @@ def personalize() -> rx.Component:
                                 max=10_000,
                                 step=1,
                                 placeholder="Optional",
+                                aria_invalid=PersonalizationState.calories_error != "",
                             ),
                             "0–10,000. A number here replaces the estimate.",
                             for_id="calories",
+                            error=PersonalizationState.calories_error,
                         ),
                         field(
-                            "Priority macro",
-                            menu(
-                                PRIORITY_MACRO,
-                                name="priority_macro",
-                                id="priority_macro",
-                                placeholder="Select",
+                            "Muscle Gain",
+                            rx.switch(
+                                id="muscle_gain",
+                                checked=PersonalizationState.muscle_gain,
+                                on_change=PersonalizationState.set_muscle_gain,
                             ),
-                            for_id="priority_macro",
+                            "Modestly increases protein while keeping your calorie goal.",
+                            for_id="muscle_gain",
                         ),
                         class_name="ns-row",
                     ),
@@ -184,14 +222,15 @@ def personalize() -> rx.Component:
                             GOALS,
                             name="current_goal",
                             id="current_goal",
-                            placeholder="Select",
+                            default_value="Maintenance",
+                            aria_invalid=PersonalizationState.goal_error != "",
                         ),
                         for_id="current_goal",
+                        error=PersonalizationState.goal_error,
                     ),
                     rx.el.ul(
                         rx.el.li("Weight Gain adds 200 kcal to maintenance."),
                         rx.el.li("Weight Loss subtracts 200 kcal."),
-                        rx.el.li("Main Gain stays at maintenance and shifts a little toward protein."),
                         class_name="ns-notes",
                     ),
                     rx.el.div(
@@ -228,6 +267,7 @@ def personalize() -> rx.Component:
                     class_name="ns-stack",
                 ),
                 on_submit=PersonalizationState.submit,
+                no_validate=True,
             ),
             class_name="ns-sheet",
         ),

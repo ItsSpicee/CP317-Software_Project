@@ -316,6 +316,19 @@ a {
   line-height: 1.45;
 }
 
+.ns-error {
+  margin: 0.15rem 0 0;
+  color: #a33b32;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.ns-field input[aria-invalid="true"],
+.ns-field button[aria-invalid="true"] {
+  border-color: #a33b32 !important;
+  box-shadow: 0 0 0 1px #a33b32 !important;
+}
+
 .ns-notes {
   padding-left: 1.05rem;
 }
