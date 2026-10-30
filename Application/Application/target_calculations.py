@@ -90,13 +90,13 @@ def calculate_targets():
     return basal_target * activity_multiplier
 
 
-def calculate_macro_targets(calories: float, priority_macro: str = "") -> dict[str, float]:
-    """Calculate macro grams from the calorie target and optional priority.
+def calculate_macro_targets(calories: float) -> dict[str, float]:
+    """Calculate baseline macro grams from the calorie target.
 
     The baseline uses 1.0 g protein per kg of body weight, capped so protein
     supplies at most 25% of calories. Fat supplies 30% of calories and carbs
-    use the remainder. A selected priority shifts up to 10% of calories toward
-    that macro, subject to per-macro caps, while keeping total calories fixed.
+    use the remainder. The optional Muscle Gain preference is applied later,
+    independently of the calorie goal.
     """
     user_data = _load_json(USER_DATA_FOLDER / "user_data.json")
     sex = str(user_data.get("sex", "")).strip().lower()
@@ -108,29 +108,7 @@ def calculate_macro_targets(calories: float, priority_macro: str = "") -> dict[s
     protein = min(weight * 1.0, calories * 0.25 / 4)
     fat = calories * 0.30 / 9
     carbs = max(0.0, (calories - protein * 4 - fat * 9) / 4)
-
-    # Shift up to 10% of total calories toward the selected macro, taking it
-    # proportionally from the other two. Caps keep the preference moderate.
-    priority = str(priority_macro).strip().lower()
-    grams = {"protein": protein, "carbs": carbs, "fat": fat}
-    kcal_per_gram = {"protein": 4.0, "carbs": 4.0, "fat": 9.0}
-    maximum_share = {"protein": 0.40, "carbs": 0.60, "fat": 0.35}
-    if priority in grams and calories > 0:
-        energy = {name: grams[name] * kcal_per_gram[name] for name in grams}
-        other_energy = calories - energy[priority]
-        increase = min(
-            calories * 0.10,
-            calories * maximum_share[priority] - energy[priority],
-        )
-        increase = max(0.0, increase)
-        if other_energy > 0 and increase > 0:
-            for name in grams:
-                if name != priority:
-                    energy[name] -= increase * energy[name] / other_energy
-            energy[priority] += increase
-            grams = {name: energy[name] / kcal_per_gram[name] for name in grams}
-
-    return grams
+    return {"protein": protein, "carbs": carbs, "fat": fat}
 
 
 def _increase_protein_share(macros: dict[str, float], calories: float, share: float = 0.05) -> dict[str, float]:
@@ -198,12 +176,18 @@ def _profile_line() -> str:
 
 def _detail_line(personalization: dict) -> str:
     parts: list[str] = []
-    goal = str(personalization.get("current_goal", "")).strip()
+    raw_goal = str(personalization.get("current_goal", "")).strip()
+    goal = raw_goal
+    if raw_goal.lower() == "main gain":
+        goal = "Maintenance"
     if goal:
         parts.append(goal)
-    priority = str(personalization.get("priority_macro", "")).strip()
-    if priority:
-        parts.append(f"{priority} priority")
+    muscle_gain = personalization.get("muscle_gain")
+    if not isinstance(muscle_gain, bool):
+        legacy_macro = str(personalization.get("priority_macro", "")).strip().lower()
+        muscle_gain = raw_goal.lower() == "main gain" or legacy_macro == "protein"
+    if muscle_gain:
+        parts.append("Muscle Gain")
     return " · ".join(parts)
 
 
@@ -212,42 +196,45 @@ def _get_target_values() -> dict[str, str | float]:
     personalization = _load_json(USER_DATA_FOLDER / "user_personalization_data.json")
     manual_calories = _bounded_number(personalization, "calories", -1, 0, MAX_CALORIES)
     has_manual_target = manual_calories >= 0
-    priority_macro = str(personalization.get("priority_macro", ""))
     current_goal = str(personalization.get("current_goal", "")).strip().lower()
+    stored_muscle_gain = personalization.get("muscle_gain")
+    if isinstance(stored_muscle_gain, bool):
+        muscle_gain = stored_muscle_gain
+    else:
+        legacy_macro = str(personalization.get("priority_macro", "")).strip().lower()
+        muscle_gain = current_goal == "main gain" or legacy_macro == "protein"
+    if current_goal == "main gain":
+        current_goal = "maintenance"
+    if current_goal not in {"maintenance", "weight gain", "weight loss"}:
+        current_goal = "maintenance"
 
     if has_manual_target:
         # A directly specified calorie target takes precedence over calorie adjustments.
         calorie_target = manual_calories
-        macros = calculate_macro_targets(calorie_target, priority_macro)
-        if current_goal in {"main gain", "muscle gain"}:
+        macros = calculate_macro_targets(calorie_target)
+        if muscle_gain:
             macros = _increase_protein_share(macros, calorie_target)
-            goal_description = "Your calorie target is used as entered; Main Gain modestly increases protein share."
-        elif current_goal in {"weight gain", "weight loss"}:
-            goal_description = "Your calorie target is used as entered; the goal's calorie adjustment is skipped."
-        else:
-            goal_description = "Your specified calorie target is used as entered."
-    elif current_goal == "weight gain":
-        calorie_target = calculated_calories + 200
-        macros = _scale_macros(
-            calculate_macro_targets(calculated_calories, priority_macro),
-            calorie_target / calculated_calories,
-        )
-        goal_description = "Includes a 200-calorie daily surplus; macro proportions are preserved."
-    elif current_goal == "weight loss":
-        calorie_target = max(0.0, calculated_calories - 200)
-        macros = _scale_macros(
-            calculate_macro_targets(calculated_calories, priority_macro),
-            calorie_target / calculated_calories,
-        )
-        goal_description = "Includes a 200-calorie daily deficit; macro proportions are preserved."
+        goal_description = "Your calorie target is used as entered."
+        if current_goal in {"weight gain", "weight loss"}:
+            goal_description += " The selected calorie adjustment is skipped."
     else:
         calorie_target = calculated_calories
-        macros = calculate_macro_targets(calorie_target, priority_macro)
-        if current_goal in {"main gain", "muscle gain"}:
+        macros = calculate_macro_targets(calculated_calories)
+        if muscle_gain:
             macros = _increase_protein_share(macros, calorie_target)
-            goal_description = "Stays at maintenance calories with a modest increase in protein share."
+        if current_goal == "weight gain":
+            calorie_target += 200
+            macros = _scale_macros(macros, calorie_target / calculated_calories)
+            goal_description = "Includes a 200-calorie daily surplus; macro proportions are preserved."
+        elif current_goal == "weight loss":
+            calorie_target = max(0.0, calculated_calories - 200)
+            macros = _scale_macros(macros, calorie_target / calculated_calories)
+            goal_description = "Includes a 200-calorie daily deficit; macro proportions are preserved."
         else:
             goal_description = "Based on estimated maintenance calories."
+
+    if muscle_gain:
+        goal_description += " Muscle Gain modestly increases protein share."
 
     fiber_target = _bounded_number(personalization, "fiber", 30, 0, 100)
     shares = _energy_shares(macros)

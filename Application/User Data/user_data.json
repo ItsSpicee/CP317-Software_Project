@@ -1,7 +1,7 @@
 {
-    "sex": "Male",
-    "activity_level": "Medium",
-    "height": 180.0,
-    "weight": 75.0,
-    "age": 26.0
+    "sex": "",
+    "activity_level": "Low",
+    "height": "",
+    "weight": "",
+    "age": ""
 }

@@ -1,8 +1,8 @@
 {
     "calories": "",
-    "priority_macro": "Protein",
-    "fiber": 30.0,
-    "current_goal": "Main Gain",
+    "fiber": 62.0,
+    "current_goal": "Maintenance",
+    "muscle_gain": true,
     "allergies": [],
     "diet_types": []
 }

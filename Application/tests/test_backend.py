@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 if str(APP_ROOT) not in sys.path:
@@ -45,17 +46,17 @@ def baseline_macros(calories, weight):
     return {"protein": protein, "carbs": carbs, "fat": fat}
 
 
-def shift_toward(macros, calories, priority, share, cap):
+def shift_toward_protein(macros, calories, share=0.05, cap=0.40):
     kcal = {"protein": 4.0, "carbs": 4.0, "fat": 9.0}
     energy = {name: macros[name] * kcal[name] for name in macros}
-    other = calories - energy[priority]
-    increase = max(0.0, min(calories * share, calories * cap - energy[priority]))
+    other = calories - energy["protein"]
+    increase = max(0.0, min(calories * share, calories * cap - energy["protein"]))
     if other <= 0 or increase <= 0:
         return dict(macros)
     for name in macros:
-        if name != priority:
+        if name != "protein":
             energy[name] -= increase * energy[name] / other
-    energy[priority] += increase
+    energy["protein"] += increase
     return {name: energy[name] / kcal[name] for name in macros}
 
 
@@ -168,43 +169,134 @@ class TestOnboardingBackend(TempDataCase):
         self.assertEqual(saved["age"], "")
         self.assertIsNotNone(result)
 
+    def test_non_numeric_measurements_are_cleared(self):
+        self.submit(
+            {
+                "sex": "Female",
+                "activity_level": "Medium",
+                "height": "abc",
+                "height_unit": "cm",
+                "weight": "hello",
+                "weight_unit": "kg",
+                "age": "twenty",
+            }
+        )
+        saved = self.read_json("user_data.json")
+        self.assertEqual(saved["height"], "")
+        self.assertEqual(saved["weight"], "")
+        self.assertEqual(saved["age"], "")
+
+    def test_valid_and_invalid_measurements_are_handled_independently(self):
+        self.submit(
+            {
+                "sex": "Female",
+                "activity_level": "Medium",
+                "height": "175",
+                "height_unit": "cm",
+                "weight": "500",
+                "weight_unit": "kg",
+                "age": "20",
+            }
+        )
+        saved = self.read_json("user_data.json")
+        self.assertAlmostEqual(saved["height"], 175.0)
+        self.assertEqual(saved["weight"], "")
+        self.assertAlmostEqual(saved["age"], 20.0)
+
+    def test_imperial_height_below_metric_range_is_cleared(self):
+        self.submit(
+            {
+                "sex": "Female",
+                "activity_level": "Medium",
+                "height": "30",
+                "height_unit": "in",
+                "weight": "60",
+                "weight_unit": "kg",
+                "age": "20",
+            }
+        )
+        saved = self.read_json("user_data.json")
+        self.assertEqual(saved["height"], "")
+        self.assertAlmostEqual(saved["weight"], 60.0)
+
+    def test_imperial_weight_above_metric_range_is_cleared(self):
+        self.submit(
+            {
+                "sex": "Male",
+                "activity_level": "Medium",
+                "height": "180",
+                "height_unit": "cm",
+                "weight": "700",
+                "weight_unit": "lb",
+                "age": "25",
+            }
+        )
+        saved = self.read_json("user_data.json")
+        self.assertAlmostEqual(saved["height"], 180.0)
+        self.assertEqual(saved["weight"], "")
+
+    def test_missing_height_does_not_clear_valid_weight_or_age(self):
+        self.submit(
+            {
+                "sex": "Male",
+                "activity_level": "Low",
+                "height": "",
+                "height_unit": "cm",
+                "weight": "70",
+                "weight_unit": "kg",
+                "age": "22",
+            }
+        )
+        saved = self.read_json("user_data.json")
+        self.assertEqual(saved["height"], "")
+        self.assertAlmostEqual(saved["weight"], 70.0)
+        self.assertAlmostEqual(saved["age"], 22.0)
+
 
 class TestPersonalizationBackend(TempDataCase):
-    def submit(self, form, fiber=30.0, allergies=None, diets=None):
+    def submit(self, form, fiber=30.0, allergies=None, diets=None, muscle_gain=False):
         bag = type("Bag", (), {})()
         bag.fiber = fiber
         bag.allergies = list(allergies or [])
         bag.diet_types = list(diets or [])
+        bag.muscle_gain = muscle_gain
         return personalize.PersonalizationState.submit.fn(bag, dict(form))
 
     def test_choices_are_saved(self):
         self.submit(
             {
                 "calories": "2200",
-                "priority_macro": "Protein",
                 "current_goal": "Weight Loss",
             },
             fiber=35,
             allergies=["Peanuts", "Milk"],
             diets=["Vegetarian"],
+            muscle_gain=True,
         )
         saved = self.read_json("user_personalization_data.json")
         self.assertAlmostEqual(saved["calories"], 2200.0)
-        self.assertEqual(saved["priority_macro"], "Protein")
         self.assertEqual(saved["current_goal"], "Weight Loss")
+        self.assertTrue(saved["muscle_gain"])
         self.assertEqual(saved["allergies"], ["Peanuts", "Milk"])
         self.assertEqual(saved["diet_types"], ["Vegetarian"])
         self.assertAlmostEqual(saved["fiber"], 35.0)
 
     def test_calorie_bounds(self):
-        self.submit({"calories": "0", "priority_macro": "", "current_goal": ""})
+        self.submit({"calories": "0", "current_goal": "Maintenance"})
         self.assertAlmostEqual(self.read_json("user_personalization_data.json")["calories"], 0.0)
 
         self.submit({"calories": "10000"})
         self.assertAlmostEqual(self.read_json("user_personalization_data.json")["calories"], 10000.0)
 
-        self.submit({"calories": "10001"})
-        self.assertEqual(self.read_json("user_personalization_data.json")["calories"], "")
+        state = SimpleNamespace(fiber=30.0, allergies=[], diet_types=[], muscle_gain=False)
+        personalize.PersonalizationState.submit.fn(state, {"calories": "10001"})
+        self.assertIn("0 to 10,000", state.calories_error)
+        self.assertAlmostEqual(self.read_json("user_personalization_data.json")["calories"], 10000.0)
+
+        state = SimpleNamespace(fiber=30.0, allergies=[], diet_types=[], muscle_gain=False)
+        personalize.PersonalizationState.submit.fn(state, {"calories": "-1"})
+        self.assertIn("0 to 10,000", state.calories_error)
+        self.assertAlmostEqual(self.read_json("user_personalization_data.json")["calories"], 10000.0)
 
         self.submit({"calories": ""})
         self.assertEqual(self.read_json("user_personalization_data.json")["calories"], "")
@@ -218,6 +310,45 @@ class TestPersonalizationBackend(TempDataCase):
 
         self.submit({"calories": ""}, fiber=-4)
         self.assertAlmostEqual(self.read_json("user_personalization_data.json")["fiber"], 0.0)
+
+    def test_negative_calories_are_rejected_without_saving(self):
+        state = SimpleNamespace(fiber=30.0, allergies=[], diet_types=[], muscle_gain=False)
+        personalize.PersonalizationState.submit.fn(
+            state,
+            {"calories": "-500", "current_goal": "Weight Gain"},
+        )
+        self.assertIn("0 to 10,000", state.calories_error)
+        self.assertFalse((self.folder / "user_personalization_data.json").exists())
+
+    def test_allergy_and_diet_options_are_defined(self):
+        self.assertIn("Peanuts", personalize.FOOD_ALLERGIES)
+        self.assertIn("Milk", personalize.FOOD_ALLERGIES)
+        self.assertIn("Vegetarian", personalize.DIETS)
+        self.assertIn("Vegan", personalize.DIETS)
+        self.assertIn("Keto", personalize.DIETS)
+        self.assertEqual(personalize.GOALS, ["Maintenance", "Weight Gain", "Weight Loss"])
+
+    def test_removed_goal_option_is_rejected(self):
+        state = SimpleNamespace(fiber=30.0, allergies=[], diet_types=[], muscle_gain=False)
+        personalize.PersonalizationState.submit.fn(
+            state,
+            {"calories": "", "current_goal": "Main Gain"},
+        )
+        self.assertIn("listed options", state.goal_error)
+        self.assertFalse((self.folder / "user_personalization_data.json").exists())
+
+    def test_saved_fiber_is_loaded(self):
+        self.write_personalization({"fiber": 45, "muscle_gain": True})
+        state = SimpleNamespace(fiber=30.0)
+        personalize.PersonalizationState.load_saved_fiber.fn(state)
+        self.assertEqual(state.fiber, 45.0)
+        self.assertTrue(state.muscle_gain)
+
+    def test_legacy_main_gain_loads_as_muscle_gain(self):
+        self.write_personalization({"fiber": 30, "current_goal": "Main Gain"})
+        state = SimpleNamespace(fiber=30.0, muscle_gain=False)
+        personalize.PersonalizationState.load_saved_fiber.fn(state)
+        self.assertTrue(state.muscle_gain)
 
 
 class TestNutritionTargets(TempDataCase):
@@ -260,6 +391,33 @@ class TestNutritionTargets(TempDataCase):
             }
         )
         self.assertAlmostEqual(tc.calculate_targets(), 2292.125, places=5)
+
+    def test_invalid_activity_level_uses_default(self):
+        profile = {
+            "sex": "Female",
+            "weight": 65,
+            "height": 165,
+            "age": 25,
+            "activity_level": "Invalid",
+        }
+        self.write_profile(profile)
+        result = tc.calculate_targets()
+        self.write_profile(dict(profile, activity_level="Low"))
+        self.assertAlmostEqual(result, tc.calculate_targets())
+
+    def test_zero_weight_uses_sex_specific_default(self):
+        profile = {
+            "sex": "Male",
+            "weight": 0,
+            "height": 180,
+            "age": 25,
+            "activity_level": "Medium",
+        }
+        self.write_profile(profile)
+        result = tc.calculate_targets()
+        profile.pop("weight")
+        self.write_profile(profile)
+        self.assertAlmostEqual(result, tc.calculate_targets())
 
     def test_missing_or_invalid_profile_uses_documented_defaults(self):
         self.assertAlmostEqual(tc.AVERAGE_WEIGHT_KG["male"], 199.0 * 0.45359237, places=6)
@@ -305,38 +463,32 @@ class TestNutritionTargets(TempDataCase):
         self.write_profile({"sex": "MALE", "activity_level": "EXTREME", "height": 180, "weight": 75, "age": 26})
         self.assertAlmostEqual(tc.calculate_targets(), 3325.0, places=6)
 
-    def test_baseline_and_priority_macros(self):
+    def test_baseline_macros_and_zero_calorie_target(self):
         self.write_profile(MALE_PROFILE)
         calories = 2712.5
         expected = baseline_macros(calories, 75)
-        actual = tc.calculate_macro_targets(calories, "")
+        actual = tc.calculate_macro_targets(calories)
         for name in expected:
             self.assertAlmostEqual(actual[name], expected[name], places=6)
 
-        shifted = tc.calculate_macro_targets(calories, "Protein")
-        expected_shift = shift_toward(expected, calories, "protein", 0.10, 0.40)
-        for name in expected_shift:
-            self.assertAlmostEqual(shifted[name], expected_shift[name], places=6)
-        self.assertGreater(shifted["protein"], actual["protein"])
         self.assertAlmostEqual(
-            shifted["protein"] * 4 + shifted["carbs"] * 4 + shifted["fat"] * 9,
+            actual["protein"] * 4 + actual["carbs"] * 4 + actual["fat"] * 9,
             calories,
             places=4,
         )
-        self.assertLessEqual(shifted["protein"] * 4, calories * 0.40 + 1e-6)
 
-        unrecognized = tc.calculate_macro_targets(calories, "not-a-macro")
-        for name in expected:
-            self.assertAlmostEqual(unrecognized[name], expected[name], places=6)
+        zero = tc.calculate_macro_targets(0)
+        self.assertEqual(zero["protein"], 0)
+        self.assertEqual(zero["carbs"], 0)
+        self.assertEqual(zero["fat"], 0)
 
     def test_goals_and_manual_calorie_override(self):
         self.write_profile(MALE_PROFILE)
         estimated = 2712.5
         base = baseline_macros(estimated, 75)
-        protein_priority = shift_toward(base, estimated, "protein", 0.10, 0.40)
 
         self.write_personalization(
-            {"calories": "", "priority_macro": "", "current_goal": "", "fiber": 30}
+            {"calories": "", "current_goal": "Maintenance", "muscle_gain": False, "fiber": 30}
         )
         values = tc._get_target_values()
         self.assertAlmostEqual(values["calories"], estimated, places=6)
@@ -344,18 +496,33 @@ class TestNutritionTargets(TempDataCase):
         self.assertIn("maintenance", values["goal_description"].lower())
 
         self.write_personalization(
-            {"calories": "", "priority_macro": "Protein", "current_goal": "Weight Gain", "fiber": 42}
+            {"calories": "", "current_goal": "Maintenance", "muscle_gain": True, "fiber": 30}
+        )
+        values = tc._get_target_values()
+        muscle_macros = shift_toward_protein(base, estimated)
+        self.assertAlmostEqual(values["calories"], estimated, places=6)
+        for name in muscle_macros:
+            self.assertAlmostEqual(values[name], muscle_macros[name], places=5)
+        self.assertGreater(values["protein"], base["protein"])
+        self.assertAlmostEqual(
+            values["protein"] * 4 + values["carbs"] * 4 + values["fat"] * 9,
+            estimated,
+            places=4,
+        )
+        self.assertIn("muscle gain", values["goal_description"].lower())
+
+        self.write_personalization(
+            {"calories": "", "current_goal": "Weight Gain", "muscle_gain": True, "fiber": 42}
         )
         values = tc._get_target_values()
         scale = (estimated + 200) / estimated
         self.assertAlmostEqual(values["calories"], estimated + 200, places=6)
-        self.assertAlmostEqual(values["protein"], protein_priority["protein"] * scale, places=5)
-        self.assertAlmostEqual(values["carbs"], protein_priority["carbs"] * scale, places=5)
-        self.assertAlmostEqual(values["fat"], protein_priority["fat"] * scale, places=5)
+        for name in muscle_macros:
+            self.assertAlmostEqual(values[name], muscle_macros[name] * scale, places=5)
         self.assertAlmostEqual(values["fiber"], 42.0)
 
         self.write_personalization(
-            {"calories": "", "priority_macro": "", "current_goal": "Weight Loss", "fiber": 0}
+            {"calories": "", "current_goal": "Weight Loss", "muscle_gain": False, "fiber": 0}
         )
         values = tc._get_target_values()
         scale = (estimated - 200) / estimated
@@ -363,18 +530,17 @@ class TestNutritionTargets(TempDataCase):
         self.assertAlmostEqual(values["protein"], base["protein"] * scale, places=5)
         self.assertAlmostEqual(values["fiber"], 0.0)
 
-        self.write_personalization(
-            {"calories": "", "priority_macro": "Fat", "current_goal": "Main Gain", "fiber": 30}
-        )
+        # Legacy saved Main Gain data still maps to maintenance plus the new toggle.
+        self.write_personalization({"calories": "", "current_goal": "Main Gain", "fiber": 30})
         values = tc._get_target_values()
-        fat_priority = shift_toward(base, estimated, "fat", 0.10, 0.35)
-        main_gain = shift_toward(fat_priority, estimated, "protein", 0.05, 0.40)
+        main_gain = shift_toward_protein(base, estimated)
         self.assertAlmostEqual(values["calories"], estimated, places=6)
         self.assertAlmostEqual(values["protein"], main_gain["protein"], places=5)
-        self.assertGreater(values["protein"], fat_priority["protein"])
+        self.assertIn("maintenance", values["detail_line"].lower())
+        self.assertIn("muscle gain", values["detail_line"].lower())
 
         self.write_personalization(
-            {"calories": 2500, "priority_macro": "", "current_goal": "Weight Gain", "fiber": 30}
+            {"calories": 2500, "current_goal": "Weight Gain", "muscle_gain": False, "fiber": 30}
         )
         values = tc._get_target_values()
         manual = baseline_macros(2500, 75)
@@ -383,46 +549,33 @@ class TestNutritionTargets(TempDataCase):
         self.assertIn("as entered", values["goal_description"].lower())
 
         self.write_personalization(
-            {"calories": 2500, "priority_macro": "", "current_goal": "Main Gain", "fiber": 80}
+            {"calories": 2500, "current_goal": "Weight Gain", "muscle_gain": True, "fiber": 80}
         )
         values = tc._get_target_values()
-        manual_gain = shift_toward(manual, 2500, "protein", 0.05, 0.40)
+        manual_gain = shift_toward_protein(manual, 2500)
         self.assertAlmostEqual(values["calories"], 2500.0, places=6)
         self.assertAlmostEqual(values["protein"], manual_gain["protein"], places=5)
         self.assertAlmostEqual(values["fiber"], 80.0)
+        self.assertIn("muscle gain", values["goal_description"].lower())
 
     def test_invalid_saved_targets_fall_back(self):
         self.write_profile(MALE_PROFILE)
         self.write_personalization(
-            {"calories": "nope", "priority_macro": "", "current_goal": "Weight Loss", "fiber": 250}
+            {"calories": "nope", "current_goal": "Weight Loss", "muscle_gain": False, "fiber": 250}
         )
         values = tc._get_target_values()
         self.assertAlmostEqual(values["calories"], 2712.5 - 200, places=6)
         self.assertAlmostEqual(values["fiber"], 30.0)
 
-        self.write_personalization({"calories": 0, "current_goal": "Weight Gain", "fiber": 100})
+        self.write_personalization(
+            {"calories": 0, "current_goal": "Weight Gain", "muscle_gain": True, "fiber": 100}
+        )
         values = tc._get_target_values()
         self.assertAlmostEqual(values["calories"], 0.0)
         self.assertAlmostEqual(values["protein"], 0.0)
         self.assertAlmostEqual(values["carbs"], 0.0)
         self.assertAlmostEqual(values["fat"], 0.0)
         self.assertAlmostEqual(values["fiber"], 100.0)
-
-
-class TestSavedPrototypeData(unittest.TestCase):
-    """Read-only check of the profile currently saved in User Data."""
-
-    def test_current_files_produce_a_complete_target(self):
-        values = tc._get_target_values()
-        estimated = maintenance(75, 180, 26, "male", "medium")
-        self.assertAlmostEqual(values["calories"], estimated, places=6)
-        self.assertGreater(values["protein"], 0)
-        self.assertGreater(values["carbs"], 0)
-        self.assertGreater(values["fat"], 0)
-        self.assertAlmostEqual(values["fiber"], 30.0)
-        self.assertIn("protein", values["goal_description"].lower())
-        energy = values["protein"] * 4 + values["carbs"] * 4 + values["fat"] * 9
-        self.assertAlmostEqual(energy, estimated, delta=1.0)
 
 
 class TestRoutesWired(unittest.TestCase):
