@@ -42,12 +42,9 @@ class PersonalizationState(rx.State):
             self.fiber = min(max(value, 0.0), 100.0)
             if isinstance(saved_data, dict):
                 stored_muscle_gain = saved_data.get("muscle_gain")
-                if isinstance(stored_muscle_gain, bool):
-                    self.muscle_gain = stored_muscle_gain
-                else:
-                    legacy_goal = str(saved_data.get("current_goal", "")).strip().lower()
-                    legacy_macro = str(saved_data.get("priority_macro", "")).strip().lower()
-                    self.muscle_gain = legacy_goal == "main gain" or legacy_macro == "protein"
+                self.muscle_gain = (
+                    stored_muscle_gain if isinstance(stored_muscle_gain, bool) else False
+                )
             else:
                 self.muscle_gain = False
         except (OSError, json.JSONDecodeError, TypeError, ValueError):

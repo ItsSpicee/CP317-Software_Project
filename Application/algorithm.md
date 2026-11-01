@@ -62,10 +62,6 @@ Fiber is accepted from 0 through 100 g. A missing, invalid, non-finite, or out-o
 
 The goal must be Maintenance, Weight Gain, or Weight Loss. Missing or unrecognized saved goals fall back to Maintenance.
 
-### Legacy preference files
-
-For saved files without a `muscle_gain` boolean, the old `Main Gain` goal or a `Protein` priority macro is interpreted as Muscle Gain enabled. The old `Main Gain` goal is treated as Maintenance. If a saved file has a `muscle_gain` boolean, that value takes precedence over those legacy fields. Old Carbs and Fat priorities have no equivalent in the current interface or calculation and are ignored.
-
 ## 4. Goal and manual-calorie precedence
 
 When no manual calorie target is present:

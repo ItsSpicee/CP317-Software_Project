@@ -20,7 +20,7 @@ def index() -> rx.Component:
                     class_name="ns-display",
                 ),
                 rx.el.p(
-                    "A short profile sets maintenance calories. A goal and a priority macro can adjust them. You leave with protein, carbohydrates, fat, and fiber.",
+                    "A short profile sets maintenance calories. A calorie goal and the Muscle Gain toggle can adjust them. You leave with protein, carbohydrates, fat, and fiber.",
                     class_name="ns-lede",
                 ),
                 rx.el.div(
@@ -36,7 +36,7 @@ def index() -> rx.Component:
             process(
                 "02",
                 "Preferences",
-                "Goal, priority macro, fiber, allergies, and diet.",
+                "Calorie goal, Muscle Gain, fiber, allergies, and diet.",
             ),
             process("03", "Targets", "Calories and grams for the day."),
             class_name="ns-process",
