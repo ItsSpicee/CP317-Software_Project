@@ -176,16 +176,10 @@ def _profile_line() -> str:
 
 def _detail_line(personalization: dict) -> str:
     parts: list[str] = []
-    raw_goal = str(personalization.get("current_goal", "")).strip()
-    goal = raw_goal
-    if raw_goal.lower() == "main gain":
-        goal = "Maintenance"
+    goal = str(personalization.get("current_goal", "Maintenance")).strip()
     if goal:
         parts.append(goal)
-    muscle_gain = personalization.get("muscle_gain")
-    if not isinstance(muscle_gain, bool):
-        legacy_macro = str(personalization.get("priority_macro", "")).strip().lower()
-        muscle_gain = raw_goal.lower() == "main gain" or legacy_macro == "protein"
+    muscle_gain = personalization.get("muscle_gain", False)
     if muscle_gain:
         parts.append("Muscle Gain")
     return " · ".join(parts)
@@ -196,15 +190,8 @@ def _get_target_values() -> dict[str, str | float]:
     personalization = _load_json(USER_DATA_FOLDER / "user_personalization_data.json")
     manual_calories = _bounded_number(personalization, "calories", -1, 0, MAX_CALORIES)
     has_manual_target = manual_calories >= 0
-    current_goal = str(personalization.get("current_goal", "")).strip().lower()
-    stored_muscle_gain = personalization.get("muscle_gain")
-    if isinstance(stored_muscle_gain, bool):
-        muscle_gain = stored_muscle_gain
-    else:
-        legacy_macro = str(personalization.get("priority_macro", "")).strip().lower()
-        muscle_gain = current_goal == "main gain" or legacy_macro == "protein"
-    if current_goal == "main gain":
-        current_goal = "maintenance"
+    current_goal = str(personalization.get("current_goal", "Maintenance")).strip().lower()
+    muscle_gain = personalization.get("muscle_gain", False)
     if current_goal not in {"maintenance", "weight gain", "weight loss"}:
         current_goal = "maintenance"
 

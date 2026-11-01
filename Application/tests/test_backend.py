@@ -328,11 +328,11 @@ class TestPersonalizationBackend(TempDataCase):
         self.assertIn("Keto", personalize.DIETS)
         self.assertEqual(personalize.GOALS, ["Maintenance", "Weight Gain", "Weight Loss"])
 
-    def test_removed_goal_option_is_rejected(self):
+    def test_invalid_goal_option_is_rejected(self):
         state = SimpleNamespace(fiber=30.0, allergies=[], diet_types=[], muscle_gain=False)
         personalize.PersonalizationState.submit.fn(
             state,
-            {"calories": "", "current_goal": "Main Gain"},
+            {"calories": "", "current_goal": "Other"},
         )
         self.assertIn("listed options", state.goal_error)
         self.assertFalse((self.folder / "user_personalization_data.json").exists())
@@ -343,13 +343,6 @@ class TestPersonalizationBackend(TempDataCase):
         personalize.PersonalizationState.load_saved_fiber.fn(state)
         self.assertEqual(state.fiber, 45.0)
         self.assertTrue(state.muscle_gain)
-
-    def test_legacy_main_gain_loads_as_muscle_gain(self):
-        self.write_personalization({"fiber": 30, "current_goal": "Main Gain"})
-        state = SimpleNamespace(fiber=30.0, muscle_gain=False)
-        personalize.PersonalizationState.load_saved_fiber.fn(state)
-        self.assertTrue(state.muscle_gain)
-
 
 class TestNutritionTargets(TempDataCase):
     def test_activity_factors_and_sex_adjustment(self):
@@ -529,15 +522,6 @@ class TestNutritionTargets(TempDataCase):
         self.assertAlmostEqual(values["calories"], estimated - 200, places=6)
         self.assertAlmostEqual(values["protein"], base["protein"] * scale, places=5)
         self.assertAlmostEqual(values["fiber"], 0.0)
-
-        # Legacy saved Main Gain data still maps to maintenance plus the new toggle.
-        self.write_personalization({"calories": "", "current_goal": "Main Gain", "fiber": 30})
-        values = tc._get_target_values()
-        main_gain = shift_toward_protein(base, estimated)
-        self.assertAlmostEqual(values["calories"], estimated, places=6)
-        self.assertAlmostEqual(values["protein"], main_gain["protein"], places=5)
-        self.assertIn("maintenance", values["detail_line"].lower())
-        self.assertIn("muscle gain", values["detail_line"].lower())
 
         self.write_personalization(
             {"calories": 2500, "current_goal": "Weight Gain", "muscle_gain": False, "fiber": 30}
