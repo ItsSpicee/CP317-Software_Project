@@ -1,104 +1,40 @@
-# Nutrition Target Calculation
+# NutriSpoke Implementation Summary
 
-This document describes how the application turns the saved profile and preferences into daily calorie and macro targets. It reflects the current implementation in `Application/target_calculations.py`, `Application/onboarding.py`, and `Application/personalize.py`.
+## What was built
 
-## 1. Profile inputs and missing values
+- A Reflex web prototype with a three-step flow: profile, optional preferences, and daily targets.
+- Profile inputs: sex, age, height, weight, and activity; height and weight accept metric or imperial units.
+- Preference inputs: calorie target, goal, Muscle Gain setting, fiber target, allergies, and diet types.
+- A results page showing daily calorie, protein, carbohydrate, fat, and fiber targets.
+- Fixed choices for activity, goal, allergies, and diet types. Open-ended forms are a later-sprint stretch goal to limit current input-validation complexity.
+- Profile and preference data stored in two JSON files. JSON meets current save-and-load needs; SQLite or another database can be considered if later requirements need database features.
 
-The onboarding form stores height in centimetres and weight in kilograms, converting from inches or pounds when selected. The target calculation reads `User Data/user_data.json`.
+## How the calculation works
 
-The profile fields are handled as follows:
+- **Normalize and validate inputs:** Imperial height is converted to centimetres (`in x 2.54`); imperial weight to kilograms (`lb x 0.45359237`). Measurements are stored in metric. Valid ranges are height 90-250 cm, weight 30-300 kg, and age 13-120 years. Blank values are accepted; invalid supplied values show an error.
+- **Fill missing values independently:**
+  - Height and weight fall back to measured averages for U.S. adults age 20 and older, from CDC/NCHS NHANES 2021-2023: men, 68.9 in and 199.0 lb; women, 63.5 in and 171.8 lb.
+  - These values are converted to metric in the app. When sex is missing or unrecognized, it uses the mean of the male and female values: about 168.1 cm and 84.1 kg. These are population-average fallbacks, not estimates of the individual user. [CDC/NCHS source](https://www.cdc.gov/nchs/fastats/body-measurements.htm)
+  - Age defaults to 40 and activity defaults to Low. These are application choices, not NHANES averages.
+  - Sex adjustment is +5 for Male, -161 for Female, and -78 when missing or unrecognized.
+- **Estimate maintenance calories** using Mifflin-St Jeor:
+  - `BMR = 10 x weight_kg + 6.25 x height_cm - 5 x age_years + sex_adjustment`
+  - `Maintenance = BMR x activity_multiplier`
+  - Activity multipliers: None 1.20, Low 1.375, Medium 1.55, High 1.725, Extreme 1.90. Unknown activity uses Low.
+- **Apply calorie preferences:** A valid manual target from 0 to 10,000 kcal replaces the estimate and overrides Weight Gain/Loss adjustments. Without one, Weight Gain adds 200 kcal; Weight Loss subtracts 200 kcal, with a zero floor. Blank or invalid manual targets are treated as absent; an invalid or missing goal defaults to Maintenance.
+- **Apply Muscle Gain:** The optional setting shifts up to 5% of calories from carbohydrates and fat proportionally to protein, capped at 40% of calories.
+- **Calculate macros:** Protein is the smaller of 1 g per kg body weight and 25% of calories (4 kcal/g). Fat supplies 30% of calories (9 kcal/g); carbohydrates use the remaining calories (4 kcal/g). Weight Gain/Loss scale the macro amounts with adjusted calories, preserving proportions. Displayed amounts are rounded to whole numbers.
+- **Handle fiber separately:** Users select 0-100 g; the default is 30 g. Fiber is not estimated from profile data.
 
-| Field | Accepted values | Value used when missing or invalid |
-| --- | --- | --- |
-| Sex | Male or Female, case-insensitive | Other-sex adjustment (`-78`); use the average of the male and female default height and weight |
-| Height | 90-250 cm | Sex-specific average for Male or Female; otherwise the overall average |
-| Weight | 30-300 kg | Sex-specific average for Male or Female; otherwise the overall average |
-| Age | 13-120 years | 40 years |
-| Activity | None, Low, Medium, High, Extreme, case-insensitive | Low |
+## Graphical design
 
-Missing, blank, nonnumeric, non-finite, and out-of-range height, weight, or age values use the corresponding default. A missing or unreadable JSON file, malformed JSON, or a JSON value that is not an object is treated as an empty profile, so all profile defaults apply.
+- Warm off-white backgrounds, dark pine accents, and muted green and gold macro colors.
+- Instrument Sans body text and Instrument Serif headings, with simple navigation, spacious cards, a three-step progress indicator, and a segmented macro bar.
 
-The sex-specific averages are converted from the source values in the code:
+## Technical issues and resolutions
 
-- Male: 199 lb and 68.9 in.
-- Female: 171.8 lb and 63.5 in.
-- Other or undisclosed sex: the arithmetic mean of the male and female converted averages.
-
-## 2. Estimated maintenance calories
-
-The application uses the Mifflin-St Jeor equation with weight in kilograms, height in centimetres, and age in years:
-
-```text
-base = 10 * weight_kg + 6.25 * height_cm - 5 * age_years + sex_adjustment
-maintenance_calories = base * activity_multiplier
-```
-
-The sex adjustment is `+5` for Male, `-161` for Female, and `-78` otherwise. Activity multipliers are:
-
-| Activity | Multiplier |
-| --- | ---: |
-| None | 1.2 |
-| Low | 1.375 |
-| Medium | 1.55 |
-| High | 1.725 |
-| Extreme | 1.9 |
-
-An unknown activity value uses Low. The resulting maintenance estimate is not rounded during calculation.
-
-## 3. Preferences and missing values
-
-The target calculation reads `User Data/user_personalization_data.json`.
-
-| Preference | Behavior when absent or invalid |
-| --- | --- |
-| Calorie target | No manual target; calculate from the profile |
-| Goal | Maintenance |
-| Muscle Gain | Off |
-| Fiber | 30 g |
-
-A manual calorie target is valid from 0 through 10,000 inclusive. Missing, blank, nonnumeric, non-finite, or out-of-range values are treated as absent by the target calculation. The preference form accepts whole-number targets; entering 0 is a valid manual target and produces zero calorie-based macros.
-
-Fiber is accepted from 0 through 100 g. A missing, invalid, non-finite, or out-of-range saved fiber value falls back to 30 g in the target calculation. The preference slider is limited to this range and the saved fiber preference is clamped when it is loaded or submitted.
-
-The goal must be Maintenance, Weight Gain, or Weight Loss. Missing or unrecognized saved goals fall back to Maintenance.
-
-## 4. Goal and manual-calorie precedence
-
-When no manual calorie target is present:
-
-| Goal | Daily calorie target |
-| --- | --- |
-| Maintenance | Estimated maintenance calories |
-| Weight Gain | Estimated maintenance calories + 200 kcal |
-| Weight Loss | Estimated maintenance calories - 200 kcal, with a floor of 0 kcal |
-
-The baseline macros are calculated at maintenance. If Muscle Gain is enabled, its protein shift is applied at maintenance. For Weight Gain or Weight Loss, all three macro amounts are then scaled by `goal_calories / maintenance_calories`, preserving the macro proportions.
-
-When a manual calorie target is present, it is used as entered and the Weight Gain or Weight Loss calorie adjustment is skipped. Baseline macros are calculated from the manual target, and the Muscle Gain protein shift is still applied if enabled.
-
-## 5. Baseline macro calculation
-
-For a calorie target `C` and selected profile weight `W` in kilograms, the baseline macro amounts are:
-
-```text
-protein_g = min(W, (C * 0.25) / 4)
-fat_g     = (C * 0.30) / 9
-carbs_g   = max(0, (C - 4 * protein_g - 9 * fat_g) / 4)
-```
-
-The calculation uses 4 kcal per gram for protein and carbohydrates and 9 kcal per gram for fat. Baseline protein is capped at 25% of the calorie target; fat is set to 30%; carbohydrates use the remaining calories. A zero-calorie target results in zero grams for all three macros.
-
-## 6. Muscle Gain adjustment
-
-When enabled, Muscle Gain shifts calories from carbohydrates and fat toward protein while keeping total calories unchanged:
-
-1. Increase protein energy by up to 5% of the calorie target.
-2. Do not let protein exceed 40% of the calorie target.
-3. Remove the increase proportionally from the existing carbohydrate and fat energy shares.
-4. Convert the resulting energy amounts back into grams.
-
-If the calorie target is zero, no shift is applied. Muscle Gain is independent of the selected calorie goal.
-
-## 7. Displayed values
-
-The target page displays calories and each macro rounded to whole numbers. It displays fiber rounded to a whole gram. Macro share percentages are calculated from the macro energy amounts and adjusted for rounding so the displayed shares sum to 100%; if all macro amounts are zero, each share displays as 0%.
+- **Opt-in data versus useful output:** Profile measurements and manual calories can be blank, and preferences can be skipped. Documented fallbacks let the app calculate targets without requiring every personal input.
+- **Missing or malformed saved data:** Missing, unreadable, or malformed JSON is treated as an empty record; missing, invalid, or out-of-range fields use defaults rather than crashing the calculation.
+- **Mixed units and invalid submissions:** Inputs are converted to metric before range checks and storage. Values are handled independently, so a blank optional field does not discard other valid entries; invalid supplied values show field errors.
+- **Persistence scope:** JSON was chosen over SQLite because the prototype stores a small set of values and does not need database-specific features. Database persistence remains a future-sprint option.
+- **Backend unit tests cover:** conversions, blank and invalid inputs, defaults, range boundaries, target logic, preference precedence, and route registration. 
