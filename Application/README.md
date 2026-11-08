@@ -43,7 +43,7 @@ Each saved suggestion contains only `items`, `estimated_weekly_totals`, and `not
 
 This basic version checks JSON structure and numeric values; nutrition accuracy and dietary suitability depend on the AI response. It does not independently verify allergens, diet compatibility, or target adherence. Invalid responses and API failures leave the previous suggestion in place. Missing or malformed saved input raises an error rather than silently discarding restrictions.
 
-Planner tests use mocked API responses and live in `tests/test_backend_sprint2.py`.
+Run `python tests/test_backend_sprint2.py` for a live smoke test of all three planner functions. It uses the key and model in `.env/variables.env`, makes two Gemini requests, checks that revision replaces a selected food, and overwrites both weekly JSON files. The final summary shows input targets and restrictions, feedback, generated and revised nutrition totals and grocery quantities, and the save results. Importing the test file does not make API requests.
 
 ## Assumptions used for targets
 
