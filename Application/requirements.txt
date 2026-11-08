@@ -1,2 +1,4 @@
 
 reflex==0.10.0
+google-genai==2.34.0
+python-dotenv==1.2.4
