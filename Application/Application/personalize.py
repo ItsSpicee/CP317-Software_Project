@@ -34,22 +34,33 @@ class PersonalizationState(rx.State):
     goal_error: str = ""
 
     @rx.event
-    def load_saved_fiber(self):
+    def load_saved_preferences(self):
         try:
             with open(USER_DATA_FOLDER / "user_personalization_data.json", "r", encoding="utf-8") as f:
                 saved_data = json.load(f)
-            value = float(saved_data.get("fiber", 30)) if isinstance(saved_data, dict) else 30.0
-            self.fiber = min(max(value, 0.0), 100.0)
-            if isinstance(saved_data, dict):
-                stored_muscle_gain = saved_data.get("muscle_gain")
-                self.muscle_gain = (
-                    stored_muscle_gain if isinstance(stored_muscle_gain, bool) else False
-                )
-            else:
-                self.muscle_gain = False
-        except (OSError, json.JSONDecodeError, TypeError, ValueError):
-            self.fiber = 30.0
-            self.muscle_gain = False
+        except (OSError, json.JSONDecodeError):
+            saved_data = {}
+        if not isinstance(saved_data, dict):
+            saved_data = {}
+
+        try:
+            value = float(saved_data.get("fiber", 30))
+        except (TypeError, ValueError):
+            value = 30.0
+        self.fiber = min(max(value, 0.0), 100.0) if math.isfinite(value) else 30.0
+        stored_muscle_gain = saved_data.get("muscle_gain")
+        self.muscle_gain = stored_muscle_gain if isinstance(stored_muscle_gain, bool) else False
+
+        allergies = saved_data.get("allergies", [])
+        diets = saved_data.get("diet_types", [])
+        self.allergies = (
+            [option for option in FOOD_ALLERGIES if option in allergies]
+            if isinstance(allergies, list) else []
+        )
+        self.diet_types = (
+            [option for option in DIETS if option in diets]
+            if isinstance(diets, list) else []
+        )
 
     @rx.event
     def set_muscle_gain(self, checked: bool):
@@ -127,6 +138,7 @@ def allergy_checkbox(allergy: str) -> rx.Component:
             allergy,
             size="2",
             color_scheme="jade",
+            checked=PersonalizationState.allergies.contains(allergy),
             on_change=lambda checked: PersonalizationState.toggle_allergy(allergy, checked),
         ),
         class_name="ns-choice",
@@ -139,6 +151,7 @@ def diet_checkbox(diet: str) -> rx.Component:
             diet,
             size="2",
             color_scheme="jade",
+            checked=PersonalizationState.diet_types.contains(diet),
             on_change=lambda checked: PersonalizationState.toggle_diet(diet, checked),
         ),
         class_name="ns-choice",

@@ -12,6 +12,7 @@ if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
 from Application import onboarding, personalize, target_calculations as tc
+from Application import get_targets as nutrition
 
 
 MALE_PROFILE = {
@@ -65,7 +66,7 @@ class TempDataCase(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.folder = Path(self.tmp.name)
         self._original = []
-        for module in (onboarding, personalize, tc):
+        for module in (onboarding, personalize, nutrition):
             self._original.append((module, module.USER_DATA_FOLDER))
             module.USER_DATA_FOLDER = self.folder
 
@@ -340,9 +341,11 @@ class TestPersonalizationBackend(TempDataCase):
     def test_saved_fiber_is_loaded(self):
         self.write_personalization({"fiber": 45, "muscle_gain": True})
         state = SimpleNamespace(fiber=30.0)
-        personalize.PersonalizationState.load_saved_fiber.fn(state)
+        personalize.PersonalizationState.load_saved_preferences.fn(state)
         self.assertEqual(state.fiber, 45.0)
         self.assertTrue(state.muscle_gain)
+
+
 
 class TestNutritionTargets(TempDataCase):
     def test_activity_factors_and_sex_adjustment(self):
@@ -356,7 +359,7 @@ class TestNutritionTargets(TempDataCase):
         for activity, calories in expected.items():
             profile = dict(MALE_PROFILE, activity_level=activity)
             self.write_profile(profile)
-            self.assertAlmostEqual(tc.calculate_targets(), calories, places=6, msg=activity)
+            self.assertAlmostEqual(nutrition.calculate_targets(), calories, places=6, msg=activity)
             self.assertAlmostEqual(
                 calories,
                 maintenance(75, 180, 26, "male", activity),
@@ -372,7 +375,7 @@ class TestNutritionTargets(TempDataCase):
                 "age": 30,
             }
         )
-        self.assertAlmostEqual(tc.calculate_targets(), 1815.34375, places=5)
+        self.assertAlmostEqual(nutrition.calculate_targets(), 1815.34375, places=5)
 
         self.write_profile(
             {
@@ -383,7 +386,7 @@ class TestNutritionTargets(TempDataCase):
                 "age": 26,
             }
         )
-        self.assertAlmostEqual(tc.calculate_targets(), 2292.125, places=5)
+        self.assertAlmostEqual(nutrition.calculate_targets(), 2292.125, places=5)
 
     def test_invalid_activity_level_uses_default(self):
         profile = {
@@ -394,9 +397,9 @@ class TestNutritionTargets(TempDataCase):
             "activity_level": "Invalid",
         }
         self.write_profile(profile)
-        result = tc.calculate_targets()
+        result = nutrition.calculate_targets()
         self.write_profile(dict(profile, activity_level="Low"))
-        self.assertAlmostEqual(result, tc.calculate_targets())
+        self.assertAlmostEqual(result, nutrition.calculate_targets())
 
     def test_zero_weight_uses_sex_specific_default(self):
         profile = {
@@ -407,26 +410,26 @@ class TestNutritionTargets(TempDataCase):
             "activity_level": "Medium",
         }
         self.write_profile(profile)
-        result = tc.calculate_targets()
+        result = nutrition.calculate_targets()
         profile.pop("weight")
         self.write_profile(profile)
-        self.assertAlmostEqual(result, tc.calculate_targets())
+        self.assertAlmostEqual(result, nutrition.calculate_targets())
 
     def test_missing_or_invalid_profile_uses_documented_defaults(self):
-        self.assertAlmostEqual(tc.AVERAGE_WEIGHT_KG["male"], 199.0 * 0.45359237, places=6)
-        self.assertAlmostEqual(tc.AVERAGE_HEIGHT_CM["male"], 68.9 * 2.54, places=6)
-        self.assertAlmostEqual(tc.AVERAGE_WEIGHT_KG["female"], 171.8 * 0.45359237, places=6)
-        self.assertAlmostEqual(tc.AVERAGE_HEIGHT_CM["female"], 63.5 * 2.54, places=6)
+        self.assertAlmostEqual(nutrition.AVERAGE_WEIGHT_KG["male"], 199.0 * 0.45359237, places=6)
+        self.assertAlmostEqual(nutrition.AVERAGE_HEIGHT_CM["male"], 68.9 * 2.54, places=6)
+        self.assertAlmostEqual(nutrition.AVERAGE_WEIGHT_KG["female"], 171.8 * 0.45359237, places=6)
+        self.assertAlmostEqual(nutrition.AVERAGE_HEIGHT_CM["female"], 63.5 * 2.54, places=6)
 
         self.write_profile({"sex": "Male", "activity_level": "Medium"})
         male_default = maintenance(
-            tc.AVERAGE_WEIGHT_KG["male"],
-            tc.AVERAGE_HEIGHT_CM["male"],
+            nutrition.AVERAGE_WEIGHT_KG["male"],
+            nutrition.AVERAGE_HEIGHT_CM["male"],
             40,
             "male",
             "medium",
         )
-        self.assertAlmostEqual(tc.calculate_targets(), male_default, places=6)
+        self.assertAlmostEqual(nutrition.calculate_targets(), male_default, places=6)
 
         self.write_profile(
             {
@@ -438,29 +441,29 @@ class TestNutritionTargets(TempDataCase):
             }
         )
         female_default = maintenance(
-            tc.AVERAGE_WEIGHT_KG["female"],
-            tc.AVERAGE_HEIGHT_CM["female"],
+            nutrition.AVERAGE_WEIGHT_KG["female"],
+            nutrition.AVERAGE_HEIGHT_CM["female"],
             40,
             "female",
             "high",
         )
-        self.assertAlmostEqual(tc.calculate_targets(), female_default, places=6)
+        self.assertAlmostEqual(nutrition.calculate_targets(), female_default, places=6)
 
         (self.folder / "user_data.json").write_text("{not json", encoding="utf-8")
-        fallback = maintenance(tc.DEFAULT_WEIGHT_KG, tc.DEFAULT_HEIGHT_CM, 40, "other", "low")
-        self.assertAlmostEqual(tc.calculate_targets(), fallback, places=6)
+        fallback = maintenance(nutrition.DEFAULT_WEIGHT_KG, nutrition.DEFAULT_HEIGHT_CM, 40, "other", "low")
+        self.assertAlmostEqual(nutrition.calculate_targets(), fallback, places=6)
 
         (self.folder / "user_data.json").write_text("[1, 2, 3]", encoding="utf-8")
-        self.assertAlmostEqual(tc.calculate_targets(), fallback, places=6)
+        self.assertAlmostEqual(nutrition.calculate_targets(), fallback, places=6)
 
         self.write_profile({"sex": "MALE", "activity_level": "EXTREME", "height": 180, "weight": 75, "age": 26})
-        self.assertAlmostEqual(tc.calculate_targets(), 3325.0, places=6)
+        self.assertAlmostEqual(nutrition.calculate_targets(), 3325.0, places=6)
 
     def test_baseline_macros_and_zero_calorie_target(self):
         self.write_profile(MALE_PROFILE)
         calories = 2712.5
         expected = baseline_macros(calories, 75)
-        actual = tc.calculate_macro_targets(calories)
+        actual = nutrition.calculate_macro_targets(calories)
         for name in expected:
             self.assertAlmostEqual(actual[name], expected[name], places=6)
 
@@ -470,7 +473,7 @@ class TestNutritionTargets(TempDataCase):
             places=4,
         )
 
-        zero = tc.calculate_macro_targets(0)
+        zero = nutrition.calculate_macro_targets(0)
         self.assertEqual(zero["protein"], 0)
         self.assertEqual(zero["carbs"], 0)
         self.assertEqual(zero["fat"], 0)
@@ -573,7 +576,7 @@ class TestRoutesWired(unittest.TestCase):
         self.assertEqual(pages["targets"].route, "targets")
         self.assertIs(
             pages["personalize"].on_load.fn,
-            personalize.PersonalizationState.load_saved_fiber.fn,
+            personalize.PersonalizationState.load_saved_preferences.fn,
         )
         self.assertIs(
             pages["targets"].on_load.fn,

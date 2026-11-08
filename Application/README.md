@@ -2,6 +2,18 @@
 
 NutriSpoke estimates a daily calorie target and displays protein, carbohydrate, fat, and fiber targets. The estimates use the profile and personalization choices saved in `User Data/user_data.json` and `User Data/user_personalization_data.json`.
 
+The reusable backend is `Application/get_targets.py`, independent of Reflex:
+
+```python
+from Application.get_targets import get_targets
+
+targets = get_targets()  # Load the two saved user-data files.
+# Or calculate from dictionaries already loaded by another backend:
+targets = get_targets(user_data=profile, personalization=preferences)
+```
+
+The result contains unrounded daily `calories`, `protein`, `carbs`, `fat`, and `fiber`, plus `has_manual_target` and `goal_description`. Calories are in kcal; macros and fiber are in grams. The targets page handles display formatting. The preferences page restores saved allergy and diet selections when revisited.
+
 ## Assumptions used for targets
 
 ### Calorie estimate
