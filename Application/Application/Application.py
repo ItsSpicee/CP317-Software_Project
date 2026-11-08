@@ -57,6 +57,6 @@ app.add_page(
     personalize,
     route="/personalize",
     title="Preferences · NutriSpoke",
-    on_load=PersonalizationState.load_saved_fiber,
+    on_load=PersonalizationState.load_saved_preferences,
 )
 app.add_page(targets, route="/targets", title="Targets · NutriSpoke", on_load=TargetState.load_targets)
