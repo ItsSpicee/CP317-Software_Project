@@ -161,6 +161,21 @@ a {
   line-height: 1.05;
 }
 
+.ns-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ns-title-copy {
+  min-width: 0;
+}
+
+.ns-title-row .ns-kicker {
+  margin-bottom: 0.45rem;
+}
+
 .ns-lede {
   max-width: 38rem;
   margin: 1.25rem 0 0;
@@ -180,7 +195,7 @@ a {
 
 .ns-process {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   margin: 4.5rem 0 0;
   padding: 0;
@@ -570,6 +585,164 @@ button.ns-btn:focus-visible,
   line-height: 1.45;
 }
 
+.ns-status {
+  margin: 1rem 0 0;
+  color: var(--pine);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.ns-badge {
+  display: inline-flex;
+  margin: 0.85rem 0 0;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: #e4ebe6;
+  color: var(--pine);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ns-grocery-body {
+  margin-top: 1.5rem;
+}
+
+.ns-grocery-summary {
+  margin-bottom: 0.35rem;
+}
+
+.ns-totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.15rem 0 0.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ns-total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ns-total-label {
+  color: var(--faint);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ns-total-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.ns-grocery-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ns-grocery-item {
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ns-grocery-item:last-child {
+  border-bottom: 0;
+}
+
+.ns-grocery-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.ns-grocery-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.ns-grocery-qty {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.ns-grocery-prep,
+.ns-grocery-nuts {
+  margin: 0.28rem 0 0;
+  color: var(--faint);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.ns-textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #d5cec3;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.ns-textarea:focus {
+  outline: 2px solid var(--pine);
+  outline-offset: 1px;
+}
+
+.ns-textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.ns-loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  color: var(--pine);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.ns-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #c9d5cf;
+  border-top-color: var(--pine);
+  border-radius: 50%;
+  animation: ns-spin 0.7s linear infinite;
+}
+
+.ns-spinner-label {
+  letter-spacing: 0.01em;
+}
+
+@keyframes ns-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button.ns-btn:disabled,
+button.ns-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .ns-hero {
     grid-template-columns: 1fr;
@@ -582,7 +755,12 @@ button.ns-btn:focus-visible,
   }
 
   .ns-process {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.25rem;
+  }
+
+  .ns-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -661,6 +839,11 @@ button.ns-btn:focus-visible,
 
   .ns-title {
     font-size: 2rem;
+  }
+
+  .ns-title-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .ns-lede {

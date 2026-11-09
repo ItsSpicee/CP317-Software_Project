@@ -141,7 +141,7 @@ def _request_suggestion(payload: dict, *, system_prompt: str) -> dict:
     model = (settings.get("GEMINI_MODEL") or "").strip()
     if not model:
         raise ValueError("Set GEMINI_MODEL in .env/variables.env to use the grocery planner.")
-    with genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=60_000)) as client:
+    with genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=120_000)) as client:
         response = client.models.generate_content(
             model=model,
             contents=json.dumps(payload, allow_nan=False),
@@ -161,10 +161,31 @@ def _request_suggestion(payload: dict, *, system_prompt: str) -> dict:
     return suggestion
 
 
-def _save_json(filename: str, value: dict) -> None:
+def _session_dir(session_id: str | None) -> Path:
+    """Each browser session keeps its own grocery files so requests can overlap."""
+    if not session_id:
+        return USER_DATA_FOLDER
+    safe = "".join(char for char in session_id if char.isalnum() or char in "-_")
+    if not safe:
+        raise ValueError("Missing browser session.")
+    folder = USER_DATA_FOLDER / "sessions" / safe
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def suggestion_path(session_id: str | None = None) -> Path:
+    return _session_dir(session_id) / "weekly_suggestion.json"
+
+
+def inventory_path(session_id: str | None = None) -> Path:
+    return _session_dir(session_id) / "weekly_grocery_inventory.json"
+
+
+def _save_json(path: Path, value: dict) -> None:
     text = json.dumps(value, indent=4, ensure_ascii=False, allow_nan=False) + "\n"
-    path = USER_DATA_FOLDER / filename
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # End in .json so the dev server does not reload and interrupt every browser.
+    temporary = path.with_name(f".{path.stem}.{uuid4().hex}.tmp.json")
     try:
         temporary.write_text(text, encoding="utf-8")
         temporary.replace(path)
@@ -172,7 +193,7 @@ def _save_json(filename: str, value: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _save_suggestion(response: dict) -> dict:
+def _save_suggestion(response: dict, session_id: str | None = None) -> dict:
     suggestion = {
         "items": response["items"],
         "estimated_weekly_totals": {
@@ -180,35 +201,46 @@ def _save_suggestion(response: dict) -> dict:
         },
         "notes": response["notes"],
     }
-    _save_json("weekly_suggestion.json", suggestion)
+    _save_json(suggestion_path(session_id), suggestion)
     return suggestion
 
 
-def generate_weekly_plan() -> dict:
+def generate_weekly_plan(session_id: str | None = None) -> dict:
     """Send seven-day targets and restrictions to Gemini and save the suggestion."""
     context = _planning_context()
     response = _request_suggestion(
         context, system_prompt=GENERATION_SYSTEM_PROMPT
     )
-    return _save_suggestion(response)
+    return _save_suggestion(response, session_id)
 
 
-def revise_weekly_plan(user_feedback: str) -> dict:
+def revise_weekly_plan(user_feedback: str, session_id: str | None = None) -> dict:
     """Revise the saved suggestion using feedback and overwrite it on success."""
     if not isinstance(user_feedback, str) or not user_feedback.strip():
         raise ValueError("Provide nonempty feedback to revise the grocery plan.")
-    suggestion = _read_json(USER_DATA_FOLDER / "weekly_suggestion.json")
+    suggestion = _read_json(suggestion_path(session_id))
     _validate_suggestion(suggestion)
     context = _planning_context()
     response = _request_suggestion(
         {**context, "current_suggestion": suggestion, "user_feedback": user_feedback.strip()},
         system_prompt=REVISION_SYSTEM_PROMPT,
     )
-    return _save_suggestion(response)
+    return _save_suggestion(response, session_id)
 
 
-def record_purchase(suggestion: dict) -> dict:
+def record_purchase(suggestion: dict, session_id: str | None = None) -> dict:
     """Save the supplied suggestion as the entire weekly grocery inventory."""
     _validate_suggestion(suggestion)
-    _save_json("weekly_grocery_inventory.json", suggestion)
+    _save_json(inventory_path(session_id), suggestion)
     return suggestion
+
+
+def invalidate_weekly_plan() -> None:
+    """Drop saved lists after profile or preference changes."""
+    for filename in ("weekly_suggestion.json", "weekly_grocery_inventory.json"):
+        (USER_DATA_FOLDER / filename).unlink(missing_ok=True)
+    sessions = USER_DATA_FOLDER / "sessions"
+    if not sessions.is_dir():
+        return
+    for path in sessions.rglob("*.json"):
+        path.unlink(missing_ok=True)

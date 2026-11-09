@@ -13,6 +13,7 @@ def page(*children, current: str = "") -> rx.Component:
                 link("Profile", "/onboarding", "profile"),
                 link("Preferences", "/personalize", "preferences"),
                 link("Targets", "/targets", "targets"),
+                link("Groceries", "/groceries", "groceries"),
                 class_name="ns-nav-links",
                 aria_label="Primary",
             ),

@@ -3,6 +3,7 @@ import json
 import math
 from pathlib import Path
 
+from .grocery_planner import invalidate_weekly_plan
 from .ui import actions, entry, field, go, menu, page, press, steps
 
 
@@ -30,6 +31,8 @@ class PersonalizationState(rx.State):
     diet_types: list[str] = []
     fiber: float = 30.0
     muscle_gain: bool = False
+    calories: str = ""
+    current_goal: str = "Maintenance"
     calories_error: str = ""
     goal_error: str = ""
 
@@ -51,6 +54,23 @@ class PersonalizationState(rx.State):
         stored_muscle_gain = saved_data.get("muscle_gain")
         self.muscle_gain = stored_muscle_gain if isinstance(stored_muscle_gain, bool) else False
 
+        raw_calories = saved_data.get("calories", "")
+        if raw_calories in (None, ""):
+            self.calories = ""
+        else:
+            try:
+                calories = float(raw_calories)
+                self.calories = (
+                    str(int(calories))
+                    if math.isfinite(calories) and calories.is_integer()
+                    else ""
+                )
+            except (TypeError, ValueError):
+                self.calories = ""
+
+        goal = str(saved_data.get("current_goal", "Maintenance") or "Maintenance")
+        self.current_goal = goal if goal in GOALS else "Maintenance"
+
         allergies = saved_data.get("allergies", [])
         diets = saved_data.get("diet_types", [])
         self.allergies = (
@@ -61,6 +81,16 @@ class PersonalizationState(rx.State):
             [option for option in DIETS if option in diets]
             if isinstance(diets, list) else []
         )
+        self.calories_error = ""
+        self.goal_error = ""
+
+    @rx.event
+    def set_calories(self, value: str):
+        self.calories = value
+
+    @rx.event
+    def set_current_goal(self, value: str):
+        self.current_goal = value
 
     @rx.event
     def set_muscle_gain(self, checked: bool):
@@ -97,7 +127,7 @@ class PersonalizationState(rx.State):
         self.calories_error = ""
         self.goal_error = ""
 
-        raw_calories = form_data.get("calories", "")
+        raw_calories = form_data.get("calories", self.calories)
         calories = ""
         if raw_calories not in (None, ""):
             try:
@@ -111,23 +141,37 @@ class PersonalizationState(rx.State):
             except (TypeError, ValueError):
                 self.calories_error = "Enter a valid calorie target, or leave it blank."
 
-        current_goal = form_data.get("current_goal", "Maintenance") or "Maintenance"
+        current_goal = (
+            form_data.get("current_goal", self.current_goal) or self.current_goal or "Maintenance"
+        )
         if current_goal and current_goal not in GOALS:
             self.goal_error = "Choose one of the listed options."
 
         if any((self.calories_error, self.goal_error)):
             return
 
-        form_data["calories"] = calories
-        form_data["current_goal"] = current_goal
-        form_data["muscle_gain"] = bool(self.muscle_gain)
         self.fiber = min(max(float(self.fiber), 0.0), 100.0)
-        form_data["allergies"] = list(self.allergies)
-        form_data["diet_types"] = list(self.diet_types)
-        form_data["fiber"] = self.fiber
+        payload = {
+            "calories": calories,
+            "current_goal": current_goal,
+            "muscle_gain": bool(self.muscle_gain),
+            "allergies": list(self.allergies),
+            "diet_types": list(self.diet_types),
+            "fiber": self.fiber,
+        }
 
-        with open(USER_DATA_FOLDER / "user_personalization_data.json", "w", encoding="utf-8") as f:
-            json.dump(form_data, f, indent=4)
+        preferences_path = USER_DATA_FOLDER / "user_personalization_data.json"
+        try:
+            previous = json.loads(preferences_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            previous = None
+        with open(preferences_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=4)
+        if previous != payload:
+            invalidate_weekly_plan()
+
+        self.calories = "" if calories in ("", None) else str(int(calories))
+        self.current_goal = current_goal
 
         return rx.redirect("/targets")
 
@@ -181,6 +225,8 @@ def personalize() -> rx.Component:
                                 max=10_000,
                                 step=1,
                                 placeholder="Optional",
+                                value=PersonalizationState.calories,
+                                on_change=PersonalizationState.set_calories,
                                 aria_invalid=PersonalizationState.calories_error != "",
                             ),
                             "0–10,000. A number here replaces the estimate.",
@@ -232,7 +278,8 @@ def personalize() -> rx.Component:
                             GOALS,
                             name="current_goal",
                             id="current_goal",
-                            default_value="Maintenance",
+                            value=PersonalizationState.current_goal,
+                            on_change=PersonalizationState.set_current_goal,
                             aria_invalid=PersonalizationState.goal_error != "",
                         ),
                         for_id="current_goal",
