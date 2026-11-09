@@ -14,6 +14,8 @@ targets = get_targets(user_data=profile, personalization=preferences)
 
 The result contains unrounded daily `calories`, `protein`, `carbs`, `fat`, and `fiber`, plus `has_manual_target` and `goal_description`. Calories are in kcal; macros and fiber are in grams. The targets page handles display formatting. The preferences page restores saved allergy and diet selections when revisited.
 
+The groceries page at `/groceries` calls `generate_weekly_plan`, `revise_weekly_plan`, and `record_purchase`. It loads any saved `weekly_suggestion.json` on open, shows weekly totals and items, accepts revision feedback, and can save the current suggestion as inventory.
+
 ## Basic grocery planner
 
 `Application/grocery_planner.py` uses Google's `google-genai` SDK (`from google import genai`). Install the dependencies from `requirements.txt`, then add your API key and model name to `.env/variables.env`:

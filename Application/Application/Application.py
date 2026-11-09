@@ -1,6 +1,7 @@
 import reflex as rx
 from rxconfig import config
-from .onboarding import onboarding
+from .grocery import GroceryState, grocery
+from .onboarding import ButtonEvent, onboarding
 from .personalize import PersonalizationState, personalize
 from .target_calculations import TargetState, targets
 from .ui import go, illustration, page, process
@@ -20,7 +21,7 @@ def index() -> rx.Component:
                     class_name="ns-display",
                 ),
                 rx.el.p(
-                    "A short profile sets maintenance calories. A calorie goal and the Muscle Gain toggle can adjust them. You leave with protein, carbohydrates, fat, and fiber.",
+                    "A short profile sets maintenance calories. A calorie goal and the Muscle Gain toggle can adjust them. You leave with protein, carbohydrates, fat, and fiber — then a weekly grocery plan.",
                     class_name="ns-lede",
                 ),
                 rx.el.div(
@@ -39,6 +40,11 @@ def index() -> rx.Component:
                 "Calorie goal, Muscle Gain, fiber, allergies, and diet.",
             ),
             process("03", "Targets", "Calories and grams for the day."),
+            process(
+                "04",
+                "Groceries",
+                "A seven-day list from your targets, then revise or record a purchase.",
+            ),
             class_name="ns-process",
         ),
     )
@@ -52,7 +58,12 @@ app = rx.App(
     ],
 )
 app.add_page(index, title="NutriSpoke", description="Estimated daily calorie and macro targets.")
-app.add_page(onboarding, route="/onboarding", title="Profile · NutriSpoke")
+app.add_page(
+    onboarding,
+    route="/onboarding",
+    title="Profile · NutriSpoke",
+    on_load=ButtonEvent.load_saved_profile,
+)
 app.add_page(
     personalize,
     route="/personalize",
@@ -60,3 +71,9 @@ app.add_page(
     on_load=PersonalizationState.load_saved_preferences,
 )
 app.add_page(targets, route="/targets", title="Targets · NutriSpoke", on_load=TargetState.load_targets)
+app.add_page(
+    grocery,
+    route="/groceries",
+    title="Groceries · NutriSpoke",
+    on_load=GroceryState.load_plan,
+)

@@ -1,0 +1,142 @@
+{
+    "items": [
+        {
+            "name": "Rolled Oats",
+            "quantity_g": 1200,
+            "preparation": "dry",
+            "calories": 4548,
+            "protein": 158.4,
+            "carbs": 812.4,
+            "fat": 78,
+            "fiber": 121.2
+        },
+        {
+            "name": "Brown Rice",
+            "quantity_g": 1050,
+            "preparation": "dry",
+            "calories": 3780,
+            "protein": 78.75,
+            "carbs": 808.5,
+            "fat": 28.35,
+            "fiber": 36.75
+        },
+        {
+            "name": "Whole Wheat Pasta",
+            "quantity_g": 600,
+            "preparation": "dry",
+            "calories": 2100,
+            "protein": 78,
+            "carbs": 420,
+            "fat": 15,
+            "fiber": 54
+        },
+        {
+            "name": "Sweet Potatoes",
+            "quantity_g": 1200,
+            "preparation": "raw, peeled",
+            "calories": 1032,
+            "protein": 19.2,
+            "carbs": 241.2,
+            "fat": 1.2,
+            "fiber": 36
+        },
+        {
+            "name": "Bananas",
+            "quantity_g": 800,
+            "preparation": "raw, peeled",
+            "calories": 712,
+            "protein": 8.8,
+            "carbs": 182.4,
+            "fat": 2.4,
+            "fiber": 20.8
+        },
+        {
+            "name": "Honey",
+            "quantity_g": 200,
+            "preparation": "raw",
+            "calories": 608,
+            "protein": 0.6,
+            "carbs": 164.8,
+            "fat": 0,
+            "fiber": 0.4
+        },
+        {
+            "name": "Chicken Breast",
+            "quantity_g": 1150,
+            "preparation": "raw, boneless skinless",
+            "calories": 1380,
+            "protein": 258.75,
+            "carbs": 0,
+            "fat": 29.9,
+            "fiber": 0
+        },
+        {
+            "name": "Whole Eggs",
+            "quantity_g": 500,
+            "preparation": "raw, shell removed",
+            "calories": 715,
+            "protein": 63,
+            "carbs": 3.5,
+            "fat": 47.5,
+            "fiber": 0
+        },
+        {
+            "name": "Extra Virgin Olive Oil",
+            "quantity_g": 290,
+            "preparation": "raw",
+            "calories": 2563.6,
+            "protein": 0,
+            "carbs": 0,
+            "fat": 290,
+            "fiber": 0
+        },
+        {
+            "name": "Peanut Butter",
+            "quantity_g": 200,
+            "preparation": "smooth, natural",
+            "calories": 1176,
+            "protein": 50,
+            "carbs": 40,
+            "fat": 100,
+            "fiber": 12
+        },
+        {
+            "name": "Whole Milk",
+            "quantity_g": 1000,
+            "preparation": "fluid",
+            "calories": 610,
+            "protein": 32,
+            "carbs": 48,
+            "fat": 33,
+            "fiber": 0
+        },
+        {
+            "name": "Fresh Broccoli",
+            "quantity_g": 700,
+            "preparation": "raw, trimmed",
+            "calories": 238,
+            "protein": 19.6,
+            "carbs": 46.2,
+            "fat": 2.8,
+            "fiber": 18.2
+        },
+        {
+            "name": "Apples",
+            "quantity_g": 500,
+            "preparation": "raw, cored",
+            "calories": 260,
+            "protein": 1.5,
+            "carbs": 69,
+            "fat": 1,
+            "fiber": 12
+        }
+    ],
+    "estimated_weekly_totals": {
+        "calories": 19722.6,
+        "protein": 768.6,
+        "carbs": 2836.0,
+        "fat": 629.15,
+        "fiber": 311.35
+    },
+    "notes": "Grocery plan tailored for one individual over 7 days to meet daily and weekly nutritional goals. Quantities represent total edible weight for the week. Macronutrient targets (fat, carbs, fiber) are closely aligned with target values, with fiber exceeding the minimum target through complex carb sources."
+}

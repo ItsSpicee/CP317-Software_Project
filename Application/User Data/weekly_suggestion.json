@@ -1,0 +1,142 @@
+{
+    "items": [
+        {
+            "name": "Rolled Oats",
+            "quantity_g": 800,
+            "preparation": "dry weight",
+            "calories": 3032,
+            "protein": 105.6,
+            "carbs": 541.6,
+            "fat": 52,
+            "fiber": 80.8
+        },
+        {
+            "name": "Brown Rice",
+            "quantity_g": 800,
+            "preparation": "dry weight",
+            "calories": 2920,
+            "protein": 60,
+            "carbs": 609.6,
+            "fat": 21.6,
+            "fiber": 27.2
+        },
+        {
+            "name": "Sweet Potato",
+            "quantity_g": 1200,
+            "preparation": "raw, unpeeled",
+            "calories": 1032,
+            "protein": 19.2,
+            "carbs": 241.2,
+            "fat": 1.2,
+            "fiber": 36
+        },
+        {
+            "name": "Bananas",
+            "quantity_g": 1200,
+            "preparation": "raw, peeled weight",
+            "calories": 1068,
+            "protein": 13.2,
+            "carbs": 273.6,
+            "fat": 3.6,
+            "fiber": 31.2
+        },
+        {
+            "name": "Apples",
+            "quantity_g": 1000,
+            "preparation": "raw, cored weight",
+            "calories": 520,
+            "protein": 3,
+            "carbs": 138,
+            "fat": 2,
+            "fiber": 24
+        },
+        {
+            "name": "Chicken Breast",
+            "quantity_g": 900,
+            "preparation": "raw, boneless skinless",
+            "calories": 1080,
+            "protein": 202.5,
+            "carbs": 0,
+            "fat": 23.4,
+            "fiber": 0
+        },
+        {
+            "name": "Salmon Fillet",
+            "quantity_g": 500,
+            "preparation": "raw",
+            "calories": 1040,
+            "protein": 100,
+            "carbs": 0,
+            "fat": 65,
+            "fiber": 0
+        },
+        {
+            "name": "Black Beans",
+            "quantity_g": 800,
+            "preparation": "canned, drained weight",
+            "calories": 1056,
+            "protein": 71.2,
+            "carbs": 189.6,
+            "fat": 4,
+            "fiber": 69.6
+        },
+        {
+            "name": "Whole Eggs",
+            "quantity_g": 400,
+            "preparation": "raw, shell removed (~7 large eggs)",
+            "calories": 572,
+            "protein": 50.4,
+            "carbs": 2.8,
+            "fat": 38,
+            "fiber": 0
+        },
+        {
+            "name": "Extra Virgin Olive Oil",
+            "quantity_g": 170,
+            "preparation": "liquid oil",
+            "calories": 1503,
+            "protein": 0,
+            "carbs": 0,
+            "fat": 170,
+            "fiber": 0
+        },
+        {
+            "name": "Whole Almonds",
+            "quantity_g": 130,
+            "preparation": "raw, unsalted",
+            "calories": 753,
+            "protein": 27.6,
+            "carbs": 28.1,
+            "fat": 64.9,
+            "fiber": 16.3
+        },
+        {
+            "name": "Broccoli",
+            "quantity_g": 800,
+            "preparation": "raw florets",
+            "calories": 272,
+            "protein": 22.4,
+            "carbs": 52.8,
+            "fat": 3.2,
+            "fiber": 20.8
+        },
+        {
+            "name": "Whole Wheat Pasta",
+            "quantity_g": 150,
+            "preparation": "dry weight",
+            "calories": 522,
+            "protein": 21.9,
+            "carbs": 111,
+            "fat": 2.8,
+            "fiber": 13.8
+        }
+    ],
+    "estimated_weekly_totals": {
+        "calories": 15370,
+        "protein": 697.0,
+        "carbs": 2188.3,
+        "fat": 451.7,
+        "fiber": 319.7
+    },
+    "notes": "This 7-day grocery plan prioritizes whole, nutrient-dense foods including complex carbohydrates (oats, brown rice, sweet potatoes, whole wheat pasta), lean protein sources (chicken breast, salmon, black beans, eggs), healthy fats (olive oil, almonds), and fiber-rich fruits and vegetables (bananas, apples, broccoli). Total planned macronutrients closely match weekly calorie and carbohydrate targets while ensuring high fiber intake and balanced essential fatty acids. Minor variance in exact protein or fat totals reflects natural whole-food composition assumptions."
+}
