@@ -153,7 +153,7 @@ def targets() -> rx.Component:
             ),
             actions(
                 [go("Back", "/personalize")],
-                [go("Home", "/", "primary")],
+                [go("Plan groceries", "/groceries", "primary")],
             ),
             class_name="ns-sheet ns-sheet-narrow",
         ),
