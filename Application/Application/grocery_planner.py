@@ -20,9 +20,11 @@ from .get_targets import get_targets
 USER_DATA_FOLDER = Path(__file__).resolve().parent.parent / "User Data"
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env" / "variables.env"
 NUTRIENTS = ("calories", "protein", "carbs", "fat", "fiber")
+GROCERY_TYPES = ("meat", "dairy", "produce", "dry_goods")
 
 ITEM_PROPERTIES = {
     "name": {"type": "string"},
+    "grocery_type": {"type": "string", "enum": list(GROCERY_TYPES)},
     "quantity_g": {"type": "number", "exclusiveMinimum": 0},
     "preparation": {"type": "string"},
     **{name: {"type": "number", "minimum": 0} for name in NUTRIENTS},
@@ -52,8 +54,13 @@ mandatory restrictions, including ingredients in compound foods. Never relax
 them to reach a target. Prefer varied vegetables, fruits, protein sources, and
 other nutrient-dense foods compatible with the selected diets.
 
-Return items and notes using the supplied JSON schema. Each item's quantity_g
-is the TOTAL edible quantity for the WEEK. State raw, dry, cooked, or drained
+Return items and notes using the supplied JSON schema. Every item must include
+grocery_type with exactly one of these values: "meat", "dairy", "produce",
+or "dry_goods". Include seafood under "meat". Choose the closest category
+for each food; use "dry_goods" for pantry staples and foods outside the other
+three categories.
+Each item's quantity_g is the TOTAL edible quantity for the WEEK.
+State raw, dry, cooked, or drained
 weight in preparation. Each item's nutrient values must describe that entire
 quantity, not a serving or 100 g. Include all foods needed for the week, and
 aim for the weekly targets across the list with reasonably balanced daily use.
@@ -122,6 +129,10 @@ def _validate_suggestion(suggestion: dict) -> None:
         for field in ("name", "preparation"):
             if not isinstance(item.get(field), str) or not item[field].strip():
                 raise ValueError(f"Each grocery item needs a nonempty {field}.")
+        if item.get("grocery_type") not in GROCERY_TYPES:
+            raise ValueError(
+                f"Each grocery item needs a grocery_type from {', '.join(GROCERY_TYPES)}."
+            )
         for field in ("quantity_g", *NUTRIENTS):
             value = item.get(field)
             if (
