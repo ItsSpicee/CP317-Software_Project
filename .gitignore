@@ -8,3 +8,11 @@ Application/User Data/user_data.json
 Application/User Data/user_personalization_data.json
 Application/User Data/weekly_suggestion.json
 Application/User Data/weekly_grocery_inventory.json
+*.db
+.web
+__pycache__/
+*.py[cod]
+assets/external/
+.states
+.env
+.env/
