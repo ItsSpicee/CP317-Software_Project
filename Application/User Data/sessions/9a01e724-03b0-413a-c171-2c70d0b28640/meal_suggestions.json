@@ -1,0 +1,124 @@
+{
+    "meals": [
+        {
+            "name": "High-Carb Honey Nut Oatmeal Bowl",
+            "description": "A dense, high-carbohydrate breakfast bowl packed with oats, whole milk, sliced banana, peanut butter, and honey to fuel your morning.",
+            "meal_type": "Breakfast",
+            "servings": 1,
+            "ingredients": [
+                "75g rolled oats",
+                "240ml whole milk",
+                "1 medium banana, sliced",
+                "1 tbsp (16g) natural peanut butter",
+                "1.5 tbsp (30g) honey"
+            ],
+            "instructions": [
+                "In a small saucepan, combine rolled oats and whole milk over medium heat.",
+                "Simmer for 5-7 minutes, stirring occasionally until oats are tender and thick.",
+                "Transfer cooked oatmeal into a serving bowl.",
+                "Top with sliced banana, swirl in peanut butter, and drizzle honey over the top before serving."
+            ],
+            "calories": 650.0,
+            "protein": 21.0,
+            "carbs": 102.0,
+            "fat": 19.0,
+            "fiber": 10.0
+        },
+        {
+            "name": "Chicken & Sweet Potato Rice Bowl",
+            "description": "A wholesome calorie-dense lunch featuring lean chicken breast, fluffy jasmine rice, roasted sweet potatoes, and steamed broccoli.",
+            "meal_type": "Lunch",
+            "servings": 1,
+            "ingredients": [
+                "85g skinless chicken breast, diced",
+                "1.5 cups (240g) cooked jasmine rice",
+                "150g sweet potato, cubed",
+                "1 tbsp olive oil",
+                "1 cup broccoli florets",
+                "Salt, pepper, and garlic powder to taste"
+            ],
+            "instructions": [
+                "Preheat oven to 200°C (400°F). Toss sweet potato cubes in half the olive oil, salt, and pepper; roast for 25 minutes until tender.",
+                "Heat remaining olive oil in a skillet over medium-high heat. Season diced chicken breast with garlic powder, salt, and pepper, then cook for 6-8 minutes until golden and cooked through.",
+                "Steam broccoli florets until bright green and tender-crisp.",
+                "Assemble bowl by layering jasmine rice, roasted sweet potatoes, steamed broccoli, and cooked chicken."
+            ],
+            "calories": 670.0,
+            "protein": 34.0,
+            "carbs": 102.0,
+            "fat": 13.0,
+            "fiber": 7.0
+        },
+        {
+            "name": "Peanut Butter & Banana Toast",
+            "description": "A fast and effective high-carb snack composed of whole wheat toast spread with peanut butter, banana slices, and a dash of honey.",
+            "meal_type": "Snack",
+            "servings": 1,
+            "ingredients": [
+                "2 slices whole wheat bread",
+                "2 tbsp (32g) natural peanut butter",
+                "1 medium banana, sliced",
+                "1 tsp honey"
+            ],
+            "instructions": [
+                "Toast the whole wheat bread slices until golden brown.",
+                "Evenly spread 1 tablespoon of peanut butter onto each toast slice.",
+                "Arrange banana slices on top of the peanut butter.",
+                "Drizzle lightly with honey and serve immediately."
+            ],
+            "calories": 470.0,
+            "protein": 15.0,
+            "carbs": 71.0,
+            "fat": 16.0,
+            "fiber": 7.0
+        },
+        {
+            "name": "Turkey & Pasta Marinara",
+            "description": "A hearty dinner containing penne pasta tossed with seasoned lean ground turkey, savory marinara sauce, olive oil, and parmesan.",
+            "meal_type": "Dinner",
+            "servings": 1,
+            "ingredients": [
+                "80g dry penne pasta",
+                "85g lean ground turkey (93/7)",
+                "1/2 cup marinara sauce",
+                "1 tbsp olive oil",
+                "1 tbsp grated parmesan cheese",
+                "Italian seasoning, salt, and black pepper"
+            ],
+            "instructions": [
+                "Bring a pot of salted water to a boil and cook penne according to package instructions. Drain and set aside.",
+                "In a pan over medium heat, heat olive oil and add ground turkey. Season with Italian seasoning, salt, and pepper, cooking until browned.",
+                "Pour marinara sauce into the pan with turkey and let simmer for 3 minutes.",
+                "Combine cooked pasta with turkey marinara sauce, sprinkle with parmesan cheese, and serve warm."
+            ],
+            "calories": 600.0,
+            "protein": 30.0,
+            "carbs": 65.0,
+            "fat": 24.0,
+            "fiber": 4.0
+        },
+        {
+            "name": "Granola & Berry Yogurt Parfait",
+            "description": "A nutrient-rich evening snack or dessert combining Greek yogurt, crunchy granola, raisins, and maple syrup.",
+            "meal_type": "Dessert",
+            "servings": 1,
+            "ingredients": [
+                "150g low-fat Greek yogurt",
+                "60g crunch oat granola",
+                "30g raisins or dried cranberries",
+                "1 tbsp maple syrup"
+            ],
+            "instructions": [
+                "In a glass or bowl, layer half of the Greek yogurt at the bottom.",
+                "Add a layer of granola and dried raisins/cranberries.",
+                "Top with remaining Greek yogurt, remaining granola, and finish with a drizzle of maple syrup."
+            ],
+            "calories": 462.0,
+            "protein": 15.0,
+            "carbs": 75.0,
+            "fat": 11.0,
+            "fiber": 3.0
+        }
+    ],
+    "notes": "These 5 meal suggestions are tailored to support your weight gain and muscle building goal, totaling approximately 2852 kcal, 115g protein, 415g carbs, 83g fat, and 31g fiber across the full day. High-carbohydrate sources (oats, rice, bread, pasta, sweet potato, granola) were emphasized to meet your target carb distribution, while keeping protein adequate for muscle synthesis. Dietary fiber guidelines (minimum 21g) are comfortably met through whole grains, fruit, oats, and sweet potatoes. Exact nutritional values may vary depending on specific brand choices and preparation methods.\n\nDaily fiber target: 21 g."
+}
