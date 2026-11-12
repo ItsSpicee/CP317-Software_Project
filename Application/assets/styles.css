@@ -818,8 +818,43 @@ button.ns-btn:focus-visible,
 
 .ns-sort-control .ns-sort-select,
 .ns-sort-select {
-  width: 13.5rem;
-  max-width: min(13.5rem, 70vw);
+  width: 11rem;
+  max-width: min(11rem, 55vw);
+}
+
+.ns-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.ns-filter-button,
+.ns-filter-reset {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.ns-filter-button.is-active {
+  border-color: var(--pine);
+  background: var(--pine);
+  color: white;
+}
+
+.ns-filter-button:focus-visible,
+.ns-filter-reset:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: 2px;
+}
+
+.ns-filter-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .ns-sort-label {

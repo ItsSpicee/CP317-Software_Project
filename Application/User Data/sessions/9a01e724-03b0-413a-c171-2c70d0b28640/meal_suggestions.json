@@ -1,0 +1,122 @@
+{
+    "meals": [
+        {
+            "name": "Oatmeal with Berries and Almond Butter",
+            "description": "Warm rolled oats topped with fresh mixed berries and a drizzle of almond butter for a nourishing breakfast.",
+            "meal_type": "Breakfast",
+            "servings": 1,
+            "ingredients": [
+                "1 cup rolled oats",
+                "1.5 cups unsweetened almond milk",
+                "1 medium banana, sliced",
+                "0.5 cup mixed berries",
+                "1 tablespoon almond butter",
+                "1 teaspoon chia seeds"
+            ],
+            "instructions": [
+                "Combine rolled oats and almond milk in a pot over medium heat.",
+                "Cook for 5-7 minutes, stirring occasionally, until oats are creamy and liquid is absorbed.",
+                "Transfer to a bowl and top with sliced banana, mixed berries, almond butter, and chia seeds."
+            ],
+            "calories": 450,
+            "protein": 14,
+            "carbs": 78,
+            "fat": 12,
+            "fiber": 12
+        },
+        {
+            "name": "Turkey and Avocado Whole Wheat Wrap",
+            "description": "A satisfying wrap packed with lean sliced turkey breast, creamy avocado, and crunchy vegetables.",
+            "meal_type": "Lunch",
+            "servings": 1,
+            "ingredients": [
+                "2 whole wheat tortillas",
+                "150 grams sliced roasted turkey breast",
+                "0.5 medium avocado, sliced",
+                "1 cup fresh spinach",
+                "1 medium tomato, sliced",
+                "2 tablespoons hummus"
+            ],
+            "instructions": [
+                "Lay the whole wheat tortillas flat on a clean surface.",
+                "Spread hummus evenly across each tortilla.",
+                "Layer with fresh spinach, sliced turkey breast, avocado, and tomato slices.",
+                "Roll the tortillas tightly, slice in half, and serve."
+            ],
+            "calories": 520,
+            "protein": 35,
+            "carbs": 55,
+            "fat": 18,
+            "fiber": 10
+        },
+        {
+            "name": "Greek Yogurt with Honey and Walnuts",
+            "description": "A protein-rich afternoon snack featuring creamy Greek yogurt sweetened with honey and topped with crunchy walnuts.",
+            "meal_type": "Snack",
+            "servings": 1,
+            "ingredients": [
+                "1 cup plain low-fat Greek yogurt",
+                "1 tablespoon honey",
+                "15 grams chopped walnuts",
+                "0.25 cup blueberries"
+            ],
+            "instructions": [
+                "Scoop Greek yogurt into a bowl.",
+                "Drizzle with honey.",
+                "Top with chopped walnuts and fresh blueberries."
+            ],
+            "calories": 250,
+            "protein": 22,
+            "carbs": 26,
+            "fat": 8,
+            "fiber": 3
+        },
+        {
+            "name": "Baked Salmon with Quinoa and Roasted Asparagus",
+            "description": "Flaky oven-baked salmon served alongside nutrient-dense quinoa and tender roasted asparagus spears.",
+            "meal_type": "Dinner",
+            "servings": 1,
+            "ingredients": [
+                "160 grams salmon fillet",
+                "1 cup cooked quinoa",
+                "10 spears asparagus",
+                "1 tablespoon olive oil",
+                "1 wedge of fresh lemon",
+                "1 pinch salt and black pepper"
+            ],
+            "instructions": [
+                "Preheat oven to 400 degrees Fahrenheit (200 degrees Celsius).",
+                "Place salmon and asparagus on a baking sheet. Drizzle with olive oil and season with salt and pepper.",
+                "Bake for 12-15 minutes until salmon is cooked through and asparagus is tender.",
+                "Serve salmon and asparagus alongside cooked quinoa with a squeeze of fresh lemon juice."
+            ],
+            "calories": 650,
+            "protein": 42,
+            "carbs": 48,
+            "fat": 30,
+            "fiber": 8
+        },
+        {
+            "name": "Apple Slices with Peanut Butter",
+            "description": "Crisp apple slices paired with natural peanut butter for a simple and energizing evening treat.",
+            "meal_type": "Dessert",
+            "servings": 1,
+            "ingredients": [
+                "1 large apple, sliced",
+                "2 tablespoons natural peanut butter",
+                "1 pinch cinnamon"
+            ],
+            "instructions": [
+                "Wash and slice the apple into wedges.",
+                "Sprinkle apple slices lightly with cinnamon.",
+                "Serve alongside natural peanut butter for dipping."
+            ],
+            "calories": 310,
+            "protein": 8,
+            "carbs": 38,
+            "fat": 16,
+            "fiber": 6
+        }
+    ],
+    "notes": "Nutritional estimates have been balanced across five daily eating occasions to closely match your maintenance targets. Fiber was carefully monitored using whole grains, vegetables, fruits, and seeds to ensure the 30g daily target is fully met. No exact nutritional accuracy is claimed."
+}
