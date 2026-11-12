@@ -1,7 +1,7 @@
 import reflex as rx
 from rxconfig import config
 from .grocery import GroceryState, grocery
-from .meals import meals
+from .meals import MealState, meals
 from .onboarding import ButtonEvent, onboarding
 from .personalize import PersonalizationState, personalize
 from .target_calculations import TargetState, targets
@@ -78,4 +78,4 @@ app.add_page(
     title="Groceries · NutriSpoke",
     on_load=GroceryState.load_plan,
 )
-app.add_page(meals, route="/meals", title="Meal Suggestions · NutriSpoke")
+app.add_page(meals, route="/meals", title="Meal Suggestions · NutriSpoke", on_load=MealState.load_meals)

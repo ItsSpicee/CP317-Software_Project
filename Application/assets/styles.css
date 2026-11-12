@@ -845,6 +845,33 @@ button.ns-btn:focus-visible,
   border-bottom: 0;
 }
 
+.ns-meal-summary {
+  color: var(--faint);
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.ns-meal-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 1rem 2rem;
+  margin: 1rem 0;
+}
+
+.ns-meal-details h4 {
+  margin: 0 0 0.35rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.ns-meal-details p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
 .ns-grocery-head {
   display: flex;
   justify-content: space-between;
