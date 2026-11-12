@@ -1,0 +1,144 @@
+{
+    "items": [
+        {
+            "name": "Chicken Breast",
+            "grocery_type": "meat",
+            "quantity_g": 1000.0,
+            "preparation": "raw",
+            "calories": 1650.0,
+            "protein": 310.0,
+            "carbs": 0.0,
+            "fat": 36.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Salmon",
+            "grocery_type": "meat",
+            "quantity_g": 600.0,
+            "preparation": "raw",
+            "calories": 1248.0,
+            "protein": 120.0,
+            "carbs": 0.0,
+            "fat": 81.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Greek Yogurt",
+            "grocery_type": "dairy",
+            "quantity_g": 1400.0,
+            "preparation": "raw",
+            "calories": 1386.0,
+            "protein": 140.0,
+            "carbs": 56.0,
+            "fat": 56.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Eggs",
+            "grocery_type": "meat",
+            "quantity_g": 700.0,
+            "preparation": "raw, whole",
+            "calories": 994.0,
+            "protein": 89.6,
+            "carbs": 4.9,
+            "fat": 68.6,
+            "fiber": 0.0
+        },
+        {
+            "name": "Brown Rice",
+            "grocery_type": "dry_goods",
+            "quantity_g": 800.0,
+            "preparation": "dry",
+            "calories": 2904.0,
+            "protein": 60.8,
+            "carbs": 612.8,
+            "fat": 24.0,
+            "fiber": 28.0
+        },
+        {
+            "name": "Rolled Oats",
+            "grocery_type": "dry_goods",
+            "quantity_g": 600.0,
+            "preparation": "dry",
+            "calories": 2328.0,
+            "protein": 78.0,
+            "carbs": 396.0,
+            "fat": 42.0,
+            "fiber": 60.0
+        },
+        {
+            "name": "Olive Oil",
+            "grocery_type": "dry_goods",
+            "quantity_g": 200.0,
+            "preparation": "raw",
+            "calories": 1768.0,
+            "protein": 0.0,
+            "carbs": 0.0,
+            "fat": 200.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Broccoli",
+            "grocery_type": "produce",
+            "quantity_g": 1400.0,
+            "preparation": "raw",
+            "calories": 476.0,
+            "protein": 39.2,
+            "carbs": 92.4,
+            "fat": 5.6,
+            "fiber": 36.4
+        },
+        {
+            "name": "Spinach",
+            "grocery_type": "produce",
+            "quantity_g": 700.0,
+            "preparation": "raw",
+            "calories": 161.0,
+            "protein": 19.9,
+            "carbs": 25.2,
+            "fat": 2.6,
+            "fiber": 15.4
+        },
+        {
+            "name": "Bananas",
+            "grocery_type": "produce",
+            "quantity_g": 1000.0,
+            "preparation": "raw, peeled",
+            "calories": 890.0,
+            "protein": 11.0,
+            "carbs": 228.0,
+            "fat": 3.0,
+            "fiber": 26.0
+        },
+        {
+            "name": "Apples",
+            "grocery_type": "produce",
+            "quantity_g": 1200.0,
+            "preparation": "raw, with skin",
+            "calories": 624.0,
+            "protein": 3.6,
+            "carbs": 165.6,
+            "fat": 2.4,
+            "fiber": 28.8
+        },
+        {
+            "name": "Sweet Potato",
+            "grocery_type": "produce",
+            "quantity_g": 1000.0,
+            "preparation": "raw",
+            "calories": 860.0,
+            "protein": 16.0,
+            "carbs": 201.0,
+            "fat": 1.0,
+            "fiber": 30.0
+        }
+    ],
+    "estimated_weekly_totals": {
+        "calories": 15289.0,
+        "protein": 888.1,
+        "carbs": 1781.8999999999999,
+        "fat": 522.2,
+        "fiber": 224.6
+    },
+    "notes": "Assumed a balanced whole-foods diet for one person covering the 7-day target requirements. Minor variances exist due to natural food composition limits, but the plan meets overall caloric and macronutrient goals reasonably well."
+}

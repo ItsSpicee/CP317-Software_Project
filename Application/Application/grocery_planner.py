@@ -56,7 +56,7 @@ other nutrient-dense foods compatible with the selected diets.
 
 Return items and notes using the supplied JSON schema. Every item must include
 grocery_type with exactly one of these values: "meat", "dairy", "produce",
-or "dry_goods". Include seafood under "meat". Choose the closest category
+or "dry_goods". Include seafood and eggs under "meat". Choose the closest category
 for each food; use "dry_goods" for pantry staples and foods outside the other
 three categories.
 Each item's quantity_g is the TOTAL edible quantity for the WEEK.

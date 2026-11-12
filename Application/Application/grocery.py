@@ -26,6 +26,7 @@ SORT_OPTIONS = [
 @dataclass
 class GroceryItem:
     name: str = ""
+    grocery_type: str = ""
     quantity_label: str = ""
     preparation: str = ""
     calories_label: str = ""
@@ -48,6 +49,7 @@ def _format_item(item: dict, order_index: int = 0) -> GroceryItem:
     fiber = float(item["fiber"])
     return GroceryItem(
         name=str(item["name"]),
+        grocery_type=str(item["grocery_type"]),
         quantity_label=f"{quantity_g:,.0f} g",
         preparation=str(item["preparation"]),
         calories_label=f"{calories:,.0f} kcal",
@@ -156,6 +158,7 @@ class GroceryState(rx.State):
     notes: str = ""
     feedback: str = ""
     sort_by: str = "Default order"
+    selected_types: list[str] = []
     items: list[GroceryItem] = []
     display_items: list[GroceryItem] = []
     calories_total: str = "0"
@@ -171,7 +174,11 @@ class GroceryState(rx.State):
     item_count: str = "0 items"
 
     def _refresh_display(self) -> None:
-        self.display_items = _sorted_items(self.items, self.sort_by)
+        visible = [
+            item for item in self.items
+            if not self.selected_types or item.grocery_type in self.selected_types
+        ]
+        self.display_items = _sorted_items(visible, self.sort_by)
 
     def _apply_suggestion(self, suggestion: dict) -> None:
         totals = suggestion["estimated_weekly_totals"]
@@ -207,6 +214,7 @@ class GroceryState(rx.State):
         self.items = []
         self.display_items = []
         self.sort_by = "Default order"
+        self.selected_types = []
         self.calories_total = "0"
         self.calories_daily = "0"
         self.protein_total = "0 g"
@@ -249,6 +257,21 @@ class GroceryState(rx.State):
     @rx.event
     def set_sort(self, value: str):
         self.sort_by = value if value in SORT_OPTIONS else "Default order"
+        self._refresh_display()
+
+    @rx.event
+    def toggle_type(self, grocery_type: str):
+        if grocery_type not in planner.GROCERY_TYPES:
+            return
+        if grocery_type in self.selected_types:
+            self.selected_types = [value for value in self.selected_types if value != grocery_type]
+        else:
+            self.selected_types = [*self.selected_types, grocery_type]
+        self._refresh_display()
+
+    @rx.event
+    def reset_types(self):
+        self.selected_types = []
         self._refresh_display()
 
     @rx.event(background=True)
@@ -345,6 +368,17 @@ def nut_chip(swatch: str, prefix: str, value) -> rx.Component:
         rx.el.span(prefix, class_name="ns-nut-prefix"),
         rx.el.span(value, class_name="ns-nut-value"),
         class_name="ns-nut-chip",
+    )
+
+
+def type_filter(label: str, grocery_type: str) -> rx.Component:
+    selected = GroceryState.selected_types.contains(grocery_type)
+    return rx.el.button(
+        label,
+        type="button",
+        on_click=GroceryState.toggle_type(grocery_type),
+        aria_pressed=selected,
+        class_name=rx.cond(selected, "ns-filter-button is-active", "ns-filter-button"),
     )
 
 
@@ -523,6 +557,23 @@ def grocery() -> rx.Component:
                                 class_name="ns-section-head",
                             ),
                             rx.el.div(
+                                type_filter("Meat", "meat"),
+                                type_filter("Dairy", "dairy"),
+                                type_filter("Produce", "produce"),
+                                type_filter("Pantry", "dry_goods"),
+                                rx.el.button(
+                                    "Reset",
+                                    type="button",
+                                    on_click=GroceryState.reset_types,
+                                    disabled=GroceryState.selected_types.length() == 0,
+                                    class_name="ns-filter-reset",
+                                    aria_label="Show all grocery types",
+                                ),
+                                role="group",
+                                aria_label="Filter grocery list by type",
+                                class_name="ns-filter-group",
+                            ),
+                            rx.el.div(
                                 rx.el.label(
                                     "Sort",
                                     html_for="grocery-sort",
@@ -537,7 +588,7 @@ def grocery() -> rx.Component:
                                     size="2",
                                     variant="surface",
                                     color_scheme="jade",
-                                    width="13.5rem",
+                                    width="11rem",
                                     class_name="ns-sort-select",
                                     aria_label="Sort grocery list",
                                 ),
@@ -548,6 +599,10 @@ def grocery() -> rx.Component:
                         rx.el.ul(
                             rx.foreach(GroceryState.display_items, grocery_row),
                             class_name="ns-grocery-list",
+                        ),
+                        rx.cond(
+                            GroceryState.display_items.length() == 0,
+                            rx.el.p("No items match the selected types.", class_name="ns-grocery-prep"),
                         ),
                         class_name="ns-list-block",
                     ),
