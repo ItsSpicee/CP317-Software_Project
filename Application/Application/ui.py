@@ -14,6 +14,7 @@ def page(*children, current: str = "") -> rx.Component:
                 link("Preferences", "/personalize", "preferences"),
                 link("Targets", "/targets", "targets"),
                 link("Groceries", "/groceries", "groceries"),
+                link("Meals", "/meals", "meals"),
                 class_name="ns-nav-links",
                 aria_label="Primary",
             ),
