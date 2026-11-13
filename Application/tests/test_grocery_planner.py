@@ -27,18 +27,23 @@ class TestGroceryPlanner(unittest.TestCase):
         )
         self.folder_patcher.start()
 
+        # Same format onboarding.py saves to user_data.json.
         self.profile = {
-            "age": 25,
-            "weight": 65,
-            "height": 170,
             "sex": "Female",
-            "activity_level": "Moderately Active"
+            "activity_level": "Medium",
+            "height": 170.0,
+            "weight": 65.0,
+            "age": 25.0
         }
 
+        # Same format personalize.py saves to user_personalization_data.json.
         self.preferences = {
+            "calories": "",
+            "current_goal": "Maintenance",
+            "muscle_gain": False,
             "allergies": ["Peanuts"],
-            "diet_types": ["Halal"],
-            "current_goal": "Maintenance"
+            "diet_types": ["Vegetarian"],
+            "fiber": 30.0
         }
 
         self.targets = {
@@ -129,7 +134,7 @@ class TestGroceryPlanner(unittest.TestCase):
         self.assertEqual(result["weekly_targets"]["calories"], 14000)
         self.assertEqual(result["weekly_targets"]["protein"], 700)
         self.assertEqual(result["allergies"], ["Peanuts"])
-        self.assertEqual(result["diet_types"], ["Halal"])
+        self.assertEqual(result["diet_types"], ["Vegetarian"])
 
     @patch.object(gp, "get_targets")
     def test_planning_context_rejects_invalid_allergies(self, mock_targets):
@@ -146,7 +151,7 @@ class TestGroceryPlanner(unittest.TestCase):
 
     @patch.object(gp, "get_targets")
     def test_planning_context_rejects_invalid_diet_types(self, mock_targets):
-        self.preferences["diet_types"] = "Halal"
+        self.preferences["diet_types"] = "Vegetarian"
         self.write_json(
             self.data_folder / "user_personalization_data.json",
             self.preferences
