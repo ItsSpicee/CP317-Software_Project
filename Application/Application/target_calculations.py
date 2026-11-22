@@ -135,17 +135,21 @@ def targets(edit: bool = True) -> rx.Component:
                 TargetState.detail_line != "",
                 rx.el.p(TargetState.detail_line, class_name="ns-meta"),
             ),
-            energy_bar(
-                TargetState.protein_width,
-                TargetState.carbs_width,
-                TargetState.fat_width,
-            ),
             rx.el.div(
-                macro_line("Protein", TargetState.protein, TargetState.protein_note, "ns-p"),
-                macro_line("Carbohydrates", TargetState.carbs, TargetState.carbs_note, "ns-c"),
-                macro_line("Fat", TargetState.fat, TargetState.fat_note, "ns-f"),
-                macro_line("Fiber", TargetState.fiber, "Selected", "ns-fiber"),
-                class_name="ns-macro-list",
+                energy_bar(
+                    TargetState.protein_width,
+                    TargetState.carbs_width,
+                    TargetState.fat_width,
+                ),
+                rx.el.div(
+                    macro_line("Protein", TargetState.protein, TargetState.protein_note, "ns-p"),
+                    macro_line("Carbohydrates", TargetState.carbs, TargetState.carbs_note, "ns-c"),
+                    macro_line("Fat", TargetState.fat, TargetState.fat_note, "ns-f"),
+                    macro_line("Fiber", TargetState.fiber, "Selected", "ns-fiber"),
+                    class_name="ns-macro-list",
+                ),
+                id="macros",
+                class_name="ns-macros",
             ),
             rx.el.div(
                 rx.el.p(TargetState.goal_description),

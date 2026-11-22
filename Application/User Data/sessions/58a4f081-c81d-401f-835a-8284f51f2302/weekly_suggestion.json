@@ -1,0 +1,133 @@
+{
+    "items": [
+        {
+            "name": "Rolled Oats",
+            "grocery_type": "dry_goods",
+            "quantity_g": 650,
+            "preparation": "dry",
+            "calories": 2520,
+            "protein": 110,
+            "carbs": 431,
+            "fat": 45,
+            "fiber": 69
+        },
+        {
+            "name": "Brown Rice",
+            "grocery_type": "dry_goods",
+            "quantity_g": 1170,
+            "preparation": "dry",
+            "calories": 4270,
+            "protein": 88,
+            "carbs": 901,
+            "fat": 32,
+            "fiber": 41
+        },
+        {
+            "name": "Whole Wheat Bread",
+            "grocery_type": "dry_goods",
+            "quantity_g": 700,
+            "preparation": "baked",
+            "calories": 1730,
+            "protein": 63,
+            "carbs": 340,
+            "fat": 24,
+            "fiber": 42
+        },
+        {
+            "name": "Sweet Potatoes",
+            "grocery_type": "produce",
+            "quantity_g": 800,
+            "preparation": "raw",
+            "calories": 688,
+            "protein": 13,
+            "carbs": 161,
+            "fat": 1,
+            "fiber": 24
+        },
+        {
+            "name": "Bananas",
+            "grocery_type": "produce",
+            "quantity_g": 1200,
+            "preparation": "raw",
+            "calories": 1068,
+            "protein": 13,
+            "carbs": 274,
+            "fat": 4,
+            "fiber": 31
+        },
+        {
+            "name": "Chicken Breast",
+            "grocery_type": "meat",
+            "quantity_g": 450,
+            "preparation": "raw",
+            "calories": 540,
+            "protein": 101,
+            "carbs": 0,
+            "fat": 11,
+            "fiber": 0
+        },
+        {
+            "name": "Whole Eggs",
+            "grocery_type": "meat",
+            "quantity_g": 400,
+            "preparation": "raw",
+            "calories": 572,
+            "protein": 50,
+            "carbs": 3,
+            "fat": 38,
+            "fiber": 0
+        },
+        {
+            "name": "Olive Oil",
+            "grocery_type": "dry_goods",
+            "quantity_g": 360,
+            "preparation": "raw",
+            "calories": 3182,
+            "protein": 0,
+            "carbs": 0,
+            "fat": 360,
+            "fiber": 0
+        },
+        {
+            "name": "Broccoli",
+            "grocery_type": "produce",
+            "quantity_g": 700,
+            "preparation": "raw",
+            "calories": 238,
+            "protein": 20,
+            "carbs": 47,
+            "fat": 2,
+            "fiber": 18
+        },
+        {
+            "name": "Honey",
+            "grocery_type": "dry_goods",
+            "quantity_g": 180,
+            "preparation": "raw",
+            "calories": 547,
+            "protein": 1,
+            "carbs": 148,
+            "fat": 0,
+            "fiber": 0
+        },
+        {
+            "name": "Apples",
+            "grocery_type": "produce",
+            "quantity_g": 300,
+            "preparation": "raw",
+            "calories": 156,
+            "protein": 1,
+            "carbs": 41,
+            "fat": 1,
+            "fiber": 7
+        }
+    ],
+    "estimated_weekly_totals": {
+        "calories": 15511,
+        "protein": 460,
+        "carbs": 2346,
+        "fat": 518,
+        "fiber": 232
+    },
+    "notes": "This 7-day grocery plan is structured to closely hit your target weekly nutrition goals (~15,500 kcal, 448g protein, 2264g carbs, 517g fat, 210g fiber). Carbohydrates are provided primarily through oats, brown rice, whole wheat bread, sweet potatoes, and fresh fruits. Proteins and healthy fats come from lean chicken breast, eggs, and olive oil. All nutrient calculations are estimates based on standard raw/dry ingredients for the full week."
+}

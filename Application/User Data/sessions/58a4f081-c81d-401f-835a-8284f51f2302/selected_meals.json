@@ -1,0 +1,84 @@
+{
+    "meals": [
+        {
+            "name": "Berry Banana Oatmeal with Almond Butter",
+            "description": "A warm and comforting bowl of oats cooked in almond milk, topped with sliced banana, fresh blueberries, and a drizzle of creamy almond butter.",
+            "meal_type": "Breakfast",
+            "servings": 1,
+            "ingredients": [
+                "1 cup rolled oats",
+                "1 cup unsweetened almond milk",
+                "1 medium banana, sliced",
+                "0.5 cup fresh blueberries",
+                "1 tbsp almond butter",
+                "1 tsp maple syrup"
+            ],
+            "instructions": [
+                "In a small saucepan, combine rolled oats and almond milk over medium heat.",
+                "Bring to a gentle simmer and cook for 5 minutes, stirring occasionally, until thick and creamy.",
+                "Transfer cooked oatmeal to a bowl.",
+                "Top with sliced banana, fresh blueberries, almond butter, and maple syrup before serving."
+            ],
+            "calories": 445,
+            "protein": 13,
+            "carbs": 72,
+            "fat": 13,
+            "fiber": 10,
+            "selected": true
+        },
+        {
+            "name": "Roasted Sweet Potato and Chickpea Bowl",
+            "description": "Hearty brown rice served with garlic-roasted sweet potato cubes, crisp chickpeas, steamed broccoli, and a smooth tahini dressing.",
+            "meal_type": "Dinner",
+            "servings": 1,
+            "ingredients": [
+                "1 cup cooked brown rice",
+                "0.5 cup canned chickpeas, rinsed and drained",
+                "1 cup sweet potato, cubed",
+                "1 cup broccoli florets",
+                "1 tbsp tahini",
+                "1 tsp olive oil",
+                "0.5 tsp garlic powder",
+                "0.25 tsp salt"
+            ],
+            "instructions": [
+                "Preheat oven to 400°F (200°C).",
+                "Toss sweet potato cubes and chickpeas with olive oil, garlic powder, and salt.",
+                "Spread evenly on a baking sheet and roast for 25 minutes until tender and crisp.",
+                "Steam broccoli florets until bright green and tender-crisp.",
+                "Assemble the bowl with a base of brown rice, topped with roasted sweet potato, chickpeas, and broccoli.",
+                "Drizzle tahini diluted with 1 tsp warm water over the bowl."
+            ],
+            "calories": 480,
+            "protein": 15,
+            "carbs": 80,
+            "fat": 13,
+            "fiber": 12,
+            "selected": true
+        },
+        {
+            "name": "Greek Yogurt Berry Parfait with Granola",
+            "description": "Creamy low-fat Greek yogurt layered with crisp granola, sweet fresh strawberries, and honey.",
+            "meal_type": "Dessert",
+            "servings": 1,
+            "ingredients": [
+                "0.75 cup low-fat Greek yogurt",
+                "0.5 cup low-fat granola",
+                "0.5 cup fresh strawberries, sliced",
+                "1 tbsp honey"
+            ],
+            "instructions": [
+                "In a glass or bowl, add half of the Greek yogurt as the base layer.",
+                "Add a layer of sliced strawberries followed by half of the granola.",
+                "Add the remaining Greek yogurt, topped with the rest of the strawberries and granola.",
+                "Drizzle honey over the top layer before serving."
+            ],
+            "calories": 420,
+            "protein": 16,
+            "carbs": 66,
+            "fat": 9,
+            "fiber": 4,
+            "selected": true
+        }
+    ]
+}

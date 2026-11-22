@@ -29,6 +29,16 @@ def _format_number(value) -> str:
     return f"{number:g}"
 
 
+def _convert_measure(value: str, factor: float) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "" if value in (None, "") else str(value)
+    if not math.isfinite(number):
+        return "" if value in (None, "") else str(value)
+    return _format_number(round(number * factor, 2))
+
+
 class ButtonEvent(rx.State):
     editing: bool = False
     sex: str = ""
@@ -93,18 +103,30 @@ class ButtonEvent(rx.State):
     @rx.event
     def set_height(self, value: str):
         self.height = value
+        self.height_error = ""
 
     @rx.event
     def set_height_unit(self, value: str):
+        if value not in HEIGHT_UNITS or value == self.height_unit:
+            return
+        factor = 2.54 if value == "cm" else 1 / 2.54
+        self.height = _convert_measure(self.height, factor)
         self.height_unit = value
+        self.height_error = ""
 
     @rx.event
     def set_weight(self, value: str):
         self.weight = value
+        self.weight_error = ""
 
     @rx.event
     def set_weight_unit(self, value: str):
+        if value not in WEIGHT_UNITS or value == self.weight_unit:
+            return
+        factor = 0.45359237 if value == "kg" else 1 / 0.45359237
+        self.weight = _convert_measure(self.weight, factor)
         self.weight_unit = value
+        self.weight_error = ""
 
     @rx.event
     def set_age(self, value: str):
@@ -142,7 +164,14 @@ class ButtonEvent(rx.State):
                 elif height_unit == "in":
                     height *= 2.54
                 if not self.height_error and not 90 <= height <= 250:
-                    self.height_error = "Enter a height from 90 to 250 cm after conversion."
+                    entered = _format_number(float(raw_height))
+                    if height_unit == "in":
+                        self.height_error = (
+                            f"{entered} in is {_format_number(round(height, 1))} cm. "
+                            "Enter 35.4–98.4 in."
+                        )
+                    else:
+                        self.height_error = f"{entered} cm is outside 90–250 cm."
             except (TypeError, ValueError):
                 self.height_error = "Enter a valid height, or leave it blank."
             if self.height_error:
@@ -159,7 +188,14 @@ class ButtonEvent(rx.State):
                 elif weight_unit == "lb":
                     weight *= 0.45359237
                 if not self.weight_error and not 30 <= weight <= 300:
-                    self.weight_error = "Enter a weight from 30 to 300 kg after conversion."
+                    entered = _format_number(float(raw_weight))
+                    if weight_unit == "lb":
+                        self.weight_error = (
+                            f"{entered} lb is {_format_number(round(weight, 1))} kg. "
+                            "Enter 66.1–661.4 lb."
+                        )
+                    else:
+                        self.weight_error = f"{entered} kg is outside 30–300 kg."
             except (TypeError, ValueError):
                 self.weight_error = "Enter a valid weight, or leave it blank."
             if self.weight_error:
@@ -262,8 +298,8 @@ def onboarding(edit: bool = False) -> rx.Component:
                                     name="height",
                                     id="height",
                                     type="number",
-                                    min=35,
-                                    max=250,
+                                    min=rx.cond(ButtonEvent.height_unit == "in", 35.4, 90),
+                                    max=rx.cond(ButtonEvent.height_unit == "in", 98.4, 250),
                                     step="any",
                                     value=ButtonEvent.height,
                                     on_change=ButtonEvent.set_height,
@@ -278,7 +314,11 @@ def onboarding(edit: bool = False) -> rx.Component:
                                 ),
                                 class_name="ns-unit",
                             ),
-                            "90–250 cm after conversion.",
+                            rx.cond(
+                                ButtonEvent.height_unit == "in",
+                                "35.4–98.4 in (90–250 cm).",
+                                "90–250 cm.",
+                            ),
                             for_id="height",
                             error=ButtonEvent.height_error,
                         ),
@@ -289,8 +329,8 @@ def onboarding(edit: bool = False) -> rx.Component:
                                     name="weight",
                                     id="weight",
                                     type="number",
-                                    min=30,
-                                    max=660,
+                                    min=rx.cond(ButtonEvent.weight_unit == "lb", 66.1, 30),
+                                    max=rx.cond(ButtonEvent.weight_unit == "lb", 661.4, 300),
                                     step="any",
                                     value=ButtonEvent.weight,
                                     on_change=ButtonEvent.set_weight,
@@ -305,7 +345,11 @@ def onboarding(edit: bool = False) -> rx.Component:
                                 ),
                                 class_name="ns-unit",
                             ),
-                            "30–300 kg after conversion.",
+                            rx.cond(
+                                ButtonEvent.weight_unit == "lb",
+                                "66.1–661.4 lb (30–300 kg).",
+                                "30–300 kg.",
+                            ),
                             for_id="weight",
                             error=ButtonEvent.weight_error,
                         ),
