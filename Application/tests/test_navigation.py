@@ -72,6 +72,16 @@ class NavigationTests(unittest.TestCase):
         for route, handlers in expected.items():
             self.assertEqual([event.fn for event in pages[route].on_load], [event.fn for event in handlers])
 
+    def test_intro_waits_for_get_started(self):
+        from Application.Application import index
+
+        self.assertIsNone(navigation.NavigationState.start.fn(self.nav))
+        intro = str(index())
+        self.assertIn("Get Started", intro)
+        self.assertIn("/onboarding", intro)
+        self.assertNotIn("ns-sidebar", intro)
+        self.assertFalse(self.nav.initialized)
+
     def test_fresh_session_starts_with_blank_data_only_once(self):
         self.write("user_data.json", {"age": 50})
         navigation.NavigationState.guard_profile.fn(self.nav)
