@@ -1,5 +1,34 @@
 # NutriSpoke
 
+## Prototype navigation
+
+Opening `/` begins a session-only setup flow: `/onboarding` (profile),
+`/personalize` (preferences), `/setup-targets`, then `/overview`. Setup has no
+main-menu navigation. Optional inputs can remain blank. New browser sessions
+start fresh; the first profile load clears saved prototype JSON, including
+generated data from previous sessions. Reloading within the same active session
+does not intentionally reset setup. There is no returning-user account or saved
+onboarding-completion flag.
+
+The main menu has Overview, Profile, Preferences, Targets, Daily Tracking,
+Progress, Grocery, Meals, and Settings. Overview shows saved profile information,
+current calculated targets, and an explicitly labeled tracking illustration.
+Tracking and Progress are placeholders. `/profile` and `/preferences` reuse the
+setup forms with saved values, Save changes, and Cancel. Saving returns to
+Overview and recalculates targets. Changes invalidate saved grocery and meal
+data. Feature URLs redirect to the current setup step until setup is complete.
+
+Settings provides a confirmed developer reset that deletes all JSON under
+`User Data`, including all session folders, and resets active form, target,
+grocery, meal, and navigation state. Reset waits for active generation in that
+browser session to finish. Profile and preferences are still shared files, so
+this remains a single-user prototype; starting a fresh browser session or
+resetting affects the saved data used by other sessions.
+
+Run `python -m unittest discover -s tests -p test_navigation.py` for isolated
+setup-ordering, editing, invalidation, and reset tests. Run `reflex compile --dry`
+from this directory to check all pages compile.
+
 NutriSpoke estimates a daily calorie target and displays protein, carbohydrate, fat, and fiber targets. The estimates use the profile and personalization choices saved in `User Data/user_data.json` and `User Data/user_personalization_data.json`.
 
 The reusable backend is `Application/get_targets.py`, independent of Reflex:

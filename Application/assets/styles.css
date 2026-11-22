@@ -2207,3 +2207,34 @@ button.ns-btn[disabled] {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Main menu workspace */
+.ns-hub { display: grid; grid-template-columns: 242px minmax(0, 1fr); min-height: 100vh; }
+.ns-sidebar { background: var(--pine); color: var(--cream); padding: 2.3rem 1.25rem; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.ns-sidebar .ns-mark { color: var(--cream); padding: 0 .85rem; font-size: 1.85rem; }
+.ns-sidebar-caption { color: #b9c9bf; font-size: .68rem; letter-spacing: .18em; margin: 2.6rem .85rem 1rem; }
+.ns-sidebar-links { display: flex; flex-direction: column; gap: .3rem; }
+.ns-sidebar-link { display: flex; align-items: center; gap: .85rem; padding: .85rem; color: #d4dfd7; border-radius: 8px; font-size: .95rem; }
+.ns-sidebar-link:hover { background: #ffffff0c; color: white; }
+.ns-sidebar-link.is-active { background: var(--cream); color: var(--pine); font-weight: 600; }
+.ns-sidebar-note { margin: auto .85rem 0; padding-top: 2rem; color: #b9c9bf; font-size: .8rem; line-height: 1.6; }
+.ns-hub-content { min-width: 0; display: flex; flex-direction: column; }
+.ns-hub-main { width: min(1100px, calc(100% - 6rem)); margin: 0 auto; flex: 1; padding: 3.5rem 0; }
+.ns-hub-main > .ns-sheet { width: 100%; margin: 0; }
+.ns-hub-footer { padding: 1.25rem 3rem; border-top: 1px solid var(--line); }
+.ns-page > .ns-hub-footer { text-align: center; }
+.ns-overview-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; margin-top: 2rem; }
+.ns-overview-card { border: 1px solid var(--line); background: var(--sheet); border-radius: 12px; padding: 2rem; min-width: 0; }
+.ns-card-title { font-family: var(--serif); font-size: 1.8rem; font-weight: 400; margin: 0 0 1.3rem; }
+.ns-overview-card > svg { color: var(--pine); margin-bottom: 1rem; }
+.ns-overview-copy { color: var(--muted); line-height: 1.8; margin: 0 0 1.5rem; }
+.ns-overview-card .ns-meta { margin-bottom: 1.8rem; }
+.ns-overview-calories { font-family: var(--serif); font-size: 4rem; line-height: 1; margin: 0 0 .5rem; }
+.ns-overview-macros { margin: 1.5rem 0; }
+.ns-overview-macro { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.ns-overview-macro dt { color: var(--muted); }
+.ns-overview-macro dd { margin: 0; font-weight: 500; }
+.ns-overview-tracking { grid-column: 1 / -1; }
+.ns-tracking-preview { max-width: 720px; margin: 1.5rem 0; }
+.ns-tracking-preview img { display: block; border-radius: 10px; }

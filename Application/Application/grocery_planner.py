@@ -247,8 +247,8 @@ def record_purchase(suggestion: dict, session_id: str | None = None) -> dict:
 
 
 def invalidate_weekly_plan() -> None:
-    """Drop saved lists after profile or preference changes."""
-    for filename in ("weekly_suggestion.json", "weekly_grocery_inventory.json"):
+    """Drop grocery and meal data after profile or preference changes."""
+    for filename in ("weekly_suggestion.json", "weekly_grocery_inventory.json", "meal_suggestions.json", "selected_meals.json"):
         (USER_DATA_FOLDER / filename).unlink(missing_ok=True)
     sessions = USER_DATA_FOLDER / "sessions"
     if not sessions.is_dir():
