@@ -240,7 +240,7 @@ def meals() -> rx.Component:
                     ),
                 ),
                 actions(
-                    [go("Back", "/groceries")],
+                    [go("Overview", "/overview")],
                     [press("Generate meals", "primary", type="button", on_click=MealState.generate, disabled=MealState.busy)],
                 ),
                 class_name="ns-stack ns-grocery-body",
