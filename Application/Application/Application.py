@@ -8,11 +8,21 @@ from .target_calculations import TargetState, targets
 from .navigation import NavigationState
 from .home import OverviewState, overview, placeholder, settings
 from .intake import MacroIntakeState
-from .ui import page
+from .ui import home_splash, page, process
 
 
 def index() -> rx.Component:
-    return page(rx.el.p("Opening your nutrition workspace?", role="status"), setup=True)
+    return page(
+        home_splash(),
+        rx.el.ol(
+            process("01", "Profile", "Sex, age, height, weight, and activity."),
+            process("02", "Preferences", "Calorie goal, Muscle Gain, fiber, allergies, and diet."),
+            process("03", "Targets", "Calories and grams for the day."),
+            process("04", "Main menu", "Your overview, groceries, meals, and more."),
+            class_name="ns-process",
+        ),
+        setup=True,
+    )
 
 
 app = rx.App(

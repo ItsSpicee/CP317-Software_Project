@@ -2,7 +2,7 @@
 
 ## Prototype navigation
 
-Opening `/` begins a session-only setup flow: `/onboarding` (profile),
+Opening `/` shows the intro page. Get Started begins a session-only setup flow: `/onboarding` (profile),
 `/personalize` (preferences), `/setup-targets`, then `/overview`. Setup has no
 main-menu navigation. Optional inputs can remain blank. New browser sessions
 start fresh; the first profile load clears saved prototype JSON, including

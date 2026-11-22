@@ -32,9 +32,9 @@ class NavigationState(rx.State):
 
     @rx.event
     def start(self):
+        """Keep the intro visible until Get Started; completed sessions use the hub."""
         if self.complete:
             return rx.redirect("/overview")
-        return rx.redirect(self._setup_route())
 
     @rx.event
     def guard_profile(self):
