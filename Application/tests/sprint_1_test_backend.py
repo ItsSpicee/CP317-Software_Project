@@ -89,7 +89,22 @@ class TempDataCase(unittest.TestCase):
 
 class TestOnboardingBackend(TempDataCase):
     def submit(self, form):
-        return onboarding.ButtonEvent.submit.fn(None, dict(form))
+        state = SimpleNamespace(
+            sex="",
+            activity_level="Low",
+            height="",
+            height_unit="cm",
+            weight="",
+            weight_unit="kg",
+            age="",
+            sex_error="",
+            activity_error="",
+            height_error="",
+            weight_error="",
+            age_error="",
+        )
+        result = onboarding.ButtonEvent.submit.fn(state, dict(form))
+        return state, result
 
     def test_metric_profile_is_saved(self):
         self.submit(
@@ -128,8 +143,8 @@ class TestOnboardingBackend(TempDataCase):
         self.assertAlmostEqual(saved["height"], 65 * 2.54)
         self.assertAlmostEqual(saved["weight"], 150 * 0.45359237)
 
-    def test_out_of_range_measurements_are_cleared(self):
-        self.submit(
+    def test_out_of_range_measurements_are_rejected(self):
+        state, result = self.submit(
             {
                 "sex": "Male",
                 "activity_level": "High",
@@ -140,10 +155,11 @@ class TestOnboardingBackend(TempDataCase):
                 "age": "5",
             }
         )
-        saved = self.read_json("user_data.json")
-        self.assertEqual(saved["height"], "")
-        self.assertEqual(saved["weight"], "")
-        self.assertEqual(saved["age"], "")
+        self.assertIsNone(result)
+        self.assertEqual(state.height_error, "10 cm is outside 90–250 cm.")
+        self.assertEqual(state.weight_error, "900 kg is outside 30–300 kg.")
+        self.assertIn("13 to 120", state.age_error)
+        self.assertFalse((self.folder / "user_data.json").exists())
 
     def test_boundary_measurements_are_kept(self):
         self.submit(
@@ -163,15 +179,16 @@ class TestOnboardingBackend(TempDataCase):
         self.assertAlmostEqual(saved["age"], 120.0)
 
     def test_blank_submission_does_not_crash(self):
-        result = self.submit({})
+        state, result = self.submit({})
         saved = self.read_json("user_data.json")
         self.assertEqual(saved["height"], "")
         self.assertEqual(saved["weight"], "")
         self.assertEqual(saved["age"], "")
+        self.assertEqual(state.height_error, "")
         self.assertIsNotNone(result)
 
-    def test_non_numeric_measurements_are_cleared(self):
-        self.submit(
+    def test_non_numeric_measurements_are_rejected(self):
+        state, result = self.submit(
             {
                 "sex": "Female",
                 "activity_level": "Medium",
@@ -182,13 +199,14 @@ class TestOnboardingBackend(TempDataCase):
                 "age": "twenty",
             }
         )
-        saved = self.read_json("user_data.json")
-        self.assertEqual(saved["height"], "")
-        self.assertEqual(saved["weight"], "")
-        self.assertEqual(saved["age"], "")
+        self.assertIsNone(result)
+        self.assertEqual(state.height_error, "Enter a valid height, or leave it blank.")
+        self.assertEqual(state.weight_error, "Enter a valid weight, or leave it blank.")
+        self.assertEqual(state.age_error, "Enter a valid age, or leave it blank.")
+        self.assertFalse((self.folder / "user_data.json").exists())
 
-    def test_valid_and_invalid_measurements_are_handled_independently(self):
-        self.submit(
+    def test_one_invalid_measurement_blocks_save(self):
+        state, result = self.submit(
             {
                 "sex": "Female",
                 "activity_level": "Medium",
@@ -199,13 +217,24 @@ class TestOnboardingBackend(TempDataCase):
                 "age": "20",
             }
         )
-        saved = self.read_json("user_data.json")
-        self.assertAlmostEqual(saved["height"], 175.0)
-        self.assertEqual(saved["weight"], "")
-        self.assertAlmostEqual(saved["age"], 20.0)
+        self.assertIsNone(result)
+        self.assertEqual(state.height_error, "")
+        self.assertEqual(state.weight_error, "500 kg is outside 30–300 kg.")
+        self.assertFalse((self.folder / "user_data.json").exists())
 
-    def test_imperial_height_below_metric_range_is_cleared(self):
-        self.submit(
+    def test_switching_height_unit_converts_the_displayed_value(self):
+        state = SimpleNamespace(height="172", height_unit="cm", height_error="stale")
+        onboarding.ButtonEvent.set_height_unit.fn(state, "in")
+        self.assertEqual(state.height_unit, "in")
+        self.assertEqual(state.height_error, "")
+        self.assertAlmostEqual(float(state.height), round(172 / 2.54, 2))
+
+        onboarding.ButtonEvent.set_height_unit.fn(state, "cm")
+        self.assertEqual(state.height_unit, "cm")
+        self.assertAlmostEqual(float(state.height), 172.0, places=1)
+
+    def test_imperial_height_below_metric_range_is_rejected(self):
+        state, result = self.submit(
             {
                 "sex": "Female",
                 "activity_level": "Medium",
@@ -216,12 +245,14 @@ class TestOnboardingBackend(TempDataCase):
                 "age": "20",
             }
         )
-        saved = self.read_json("user_data.json")
-        self.assertEqual(saved["height"], "")
-        self.assertAlmostEqual(saved["weight"], 60.0)
+        self.assertIsNone(result)
+        self.assertIn("30 in is", state.height_error)
+        self.assertIn("Enter 35.4–98.4 in.", state.height_error)
+        self.assertEqual(state.weight_error, "")
+        self.assertFalse((self.folder / "user_data.json").exists())
 
-    def test_imperial_weight_above_metric_range_is_cleared(self):
-        self.submit(
+    def test_imperial_weight_above_metric_range_is_rejected(self):
+        state, result = self.submit(
             {
                 "sex": "Male",
                 "activity_level": "Medium",
@@ -232,9 +263,11 @@ class TestOnboardingBackend(TempDataCase):
                 "age": "25",
             }
         )
-        saved = self.read_json("user_data.json")
-        self.assertAlmostEqual(saved["height"], 180.0)
-        self.assertEqual(saved["weight"], "")
+        self.assertIsNone(result)
+        self.assertEqual(state.height_error, "")
+        self.assertIn("700 lb is", state.weight_error)
+        self.assertIn("Enter 66.1–661.4 lb.", state.weight_error)
+        self.assertFalse((self.folder / "user_data.json").exists())
 
     def test_missing_height_does_not_clear_valid_weight_or_age(self):
         self.submit(
