@@ -14,6 +14,8 @@
   --fiber: #8a847a;
   --sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --serif: "Instrument Serif", Georgia, serif;
+  /* Circumference for r=36 ring charts: 2πr */
+  --ring-c: 226.195;
 }
 
 *,
@@ -59,6 +61,7 @@ a {
 }
 
 .ns-hero > *,
+.ns-splash > *,
 .ns-row > *,
 .ns-unit > *,
 .ns-process,
@@ -132,6 +135,916 @@ a {
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
   gap: 4rem;
   align-items: center;
+}
+
+.ns-splash {
+  --donut-ring: 226.195;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 3.75rem);
+  align-items: center;
+  margin: 0 0 2.75rem;
+  padding: 0.35rem 0 2.35rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ns-splash-copy {
+  min-width: 0;
+  animation: ns-rise 0.7s ease-out both;
+}
+
+.ns-splash .ns-kicker.ns-splash-brand {
+  color: var(--pine);
+}
+
+.ns-splash .ns-display {
+  max-width: 11ch;
+  font-size: clamp(2.85rem, 5.5vw, 4.4rem);
+}
+
+.ns-splash .ns-lede {
+  max-width: 32rem;
+}
+
+.ns-splash-visual {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.ns-protein {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(1.5rem, 4vw, 2.75rem);
+  align-items: end;
+  margin: 0 0 2.5rem;
+  padding: 0 0 2.35rem;
+  border-bottom: 1px solid var(--line);
+  animation: ns-rise 0.75s ease-out 0.12s both;
+}
+
+.ns-protein-intro {
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.ns-protein-title {
+  margin: 0.15rem 0 0.55rem;
+  font-family: var(--serif);
+  font-size: clamp(1.85rem, 3.2vw, 2.35rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--pine-deep);
+}
+
+.ns-protein-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ns-protein-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 1.15rem 1.2rem 1.2rem;
+  background: linear-gradient(165deg, var(--cream) 0%, #efe9df 100%);
+  border: 1px solid var(--line);
+  border-radius: 0.2rem;
+}
+
+.ns-protein-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pine);
+}
+
+.ns-protein-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.55rem;
+}
+
+.ns-protein-intake {
+  font-family: var(--serif);
+  font-size: clamp(1.65rem, 2.8vw, 2rem);
+  line-height: 1;
+  color: var(--pine-deep);
+}
+
+.ns-protein-goal {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.ns-protein-bar {
+  width: 100%;
+  height: 0.55rem;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e4ddd3;
+}
+
+.ns-protein-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pine) 0%, #2f5a4e 100%);
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ns-protein-left {
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.ns-protein-left-label {
+  color: var(--muted);
+}
+
+.ns-protein-left-value {
+  font-weight: 600;
+  color: var(--pine-deep);
+}
+
+.ns-protein-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--faint);
+}
+
+.ns-intake {
+  --ring-c: 226.195;
+  margin: 0 0 2.5rem;
+  padding: 0 0 2.35rem;
+  border-bottom: 1px solid var(--line);
+  animation: ns-rise 0.7s ease-out both;
+}
+
+.ns-intake-intro {
+  max-width: 36rem;
+  margin-bottom: 1.35rem;
+}
+
+.ns-intake-title {
+  margin: 0.15rem 0 0.55rem;
+  font-family: var(--serif);
+  font-size: clamp(1.85rem, 3.2vw, 2.45rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--pine-deep);
+}
+
+.ns-intake-block + .ns-intake-block {
+  margin-top: 1.65rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.ns-intake-subhead {
+  margin: 0 0 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pine);
+}
+
+.ns-intake-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.ns-ring-card,
+.ns-flat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.35rem 0.25rem 0.5rem;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.ns-ring {
+  position: relative;
+  width: min(6.75rem, 100%);
+  aspect-ratio: 1;
+}
+
+.ns-ring-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.ns-ring-track,
+.ns-ring-fill {
+  fill: none;
+  stroke-width: 11;
+}
+
+.ns-ring-track {
+  stroke: #e4ddd3;
+}
+
+.ns-ring-fill {
+  stroke-linecap: round;
+  stroke-dasharray: var(--ring-c);
+  stroke-dashoffset: calc(var(--ring-c) * (1 - var(--ring-p, 0)));
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ns-ring-fill.ns-p {
+  stroke: var(--protein);
+}
+
+.ns-ring-fill.ns-c {
+  stroke: var(--carbs);
+}
+
+.ns-ring-fill.ns-f {
+  stroke: var(--fat);
+}
+
+.ns-ring-fill.ns-fiber {
+  stroke: var(--fiber);
+}
+
+.ns-ring-name,
+.ns-flat-name {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pine);
+}
+
+.ns-ring-figure {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.15;
+  color: var(--pine-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-ring-left,
+.ns-flat-left {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-flat {
+  position: relative;
+  width: min(7.5rem, 100%);
+  aspect-ratio: 1;
+}
+
+.ns-flat-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.ns-flat-track,
+.ns-flat-fill {
+  fill: none;
+  stroke-width: 11;
+}
+
+.ns-flat-track {
+  stroke: #e4ddd3;
+  opacity: 0.85;
+}
+
+.ns-flat-fill {
+  stroke-linecap: round;
+  stroke-dasharray: var(--ring-c);
+  /* Start empty; .is-inview fills 0% → intake% via transition. */
+  stroke-dashoffset: var(--ring-c);
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ns-flat-fill.ns-p {
+  stroke: var(--protein);
+}
+
+.ns-flat-fill.ns-c {
+  stroke: var(--carbs);
+}
+
+.ns-flat-fill.ns-f {
+  stroke: var(--fat);
+}
+
+.ns-flat-fill.ns-fiber {
+  stroke: var(--fiber);
+}
+
+.ns-flat-tip {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  transform: rotate(0deg);
+  opacity: 0;
+  transition:
+    transform 1.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s linear;
+}
+
+.ns-home-charts.is-inview .ns-flat-tip {
+  transform: rotate(calc(var(--ring-p, 0) * 360deg));
+  opacity: clamp(0, calc((var(--ring-p, 0) - 0.015) * 40), 1);
+}
+
+.ns-home-charts .ns-flat-card:nth-child(1) .ns-flat-tip {
+  transition-delay: 0.05s;
+}
+
+.ns-home-charts .ns-flat-card:nth-child(2) .ns-flat-tip {
+  transition-delay: 0.18s;
+}
+
+.ns-home-charts .ns-flat-card:nth-child(3) .ns-flat-tip {
+  transition-delay: 0.31s;
+}
+
+.ns-home-charts .ns-flat-card:nth-child(4) .ns-flat-tip {
+  transition-delay: 0.44s;
+}
+
+.ns-flat-tip-head {
+  stroke: none;
+}
+
+.ns-flat-tip-head.ns-p {
+  fill: var(--protein);
+}
+
+.ns-flat-tip-head.ns-c {
+  fill: var(--carbs);
+}
+
+.ns-flat-tip-head.ns-f {
+  fill: var(--fat);
+}
+
+.ns-flat-tip-head.ns-fiber {
+  fill: var(--fiber);
+}
+
+.ns-flat-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 0.75rem;
+  pointer-events: none;
+}
+
+.ns-flat-center-figure {
+  font-family: var(--serif);
+  font-size: clamp(0.72rem, 1.5vw, 0.85rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--pine-deep);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.ns-donut {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(13.5rem, 42vw);
+  aspect-ratio: 1;
+}
+
+.ns-donut-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.ns-donut-track,
+.ns-donut-seg {
+  fill: none;
+  stroke-width: 15;
+}
+
+.ns-donut-track {
+  stroke: var(--line);
+}
+
+.ns-donut-seg {
+  stroke-linecap: butt;
+  animation: ns-donut-draw 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Protein 26% · Carbs 44% · Fat 30% (r=36, C≈226.195) */
+.ns-donut-p {
+  stroke: var(--protein);
+  stroke-dasharray: 58.811 167.384;
+  --donut-from: 226.195;
+  --donut-to: 0;
+  animation-delay: 0.18s;
+}
+
+.ns-donut-c {
+  stroke: var(--carbs);
+  stroke-dasharray: 99.526 126.669;
+  --donut-from: 167.384;
+  --donut-to: -58.811;
+  animation-delay: 0.3s;
+}
+
+.ns-donut-f {
+  stroke: var(--fat);
+  stroke-dasharray: 67.858 158.337;
+  --donut-from: 67.858;
+  --donut-to: -158.337;
+  animation-delay: 0.42s;
+}
+
+.ns-donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+  animation: ns-rise 0.65s ease-out 0.55s both;
+}
+
+.ns-donut-unit {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.ns-donut-label {
+  margin-top: 0.2rem;
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ns-pie-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.ns-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ns-pie-item {
+  display: grid;
+  grid-template-columns: 0.7rem minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  animation: ns-rise 0.55s ease-out both;
+}
+
+.ns-pie-item:nth-child(1) {
+  animation-delay: 0.45s;
+}
+
+.ns-pie-item:nth-child(2) {
+  animation-delay: 0.55s;
+}
+
+.ns-pie-item:nth-child(3) {
+  animation-delay: 0.65s;
+}
+
+.ns-pie-item .ns-swatch {
+  transform-origin: center;
+  animation: ns-swatch-in 0.5s ease-out both;
+}
+
+.ns-pie-item:nth-child(1) .ns-swatch {
+  animation-delay: 0.5s;
+}
+
+.ns-pie-item:nth-child(2) .ns-swatch {
+  animation-delay: 0.6s;
+}
+
+.ns-pie-item:nth-child(3) .ns-swatch {
+  animation-delay: 0.7s;
+}
+
+.ns-pie-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ns-pie-value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.ns-pie-fiber {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin: 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  animation: ns-rise 0.55s ease-out 0.75s both;
+}
+
+.ns-pie-fiber strong {
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes ns-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.7rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ns-donut-draw {
+  from {
+    stroke-dashoffset: var(--donut-from);
+  }
+  to {
+    stroke-dashoffset: var(--donut-to);
+  }
+}
+
+@keyframes ns-swatch-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-splash-copy,
+  .ns-intake,
+  .ns-donut-seg,
+  .ns-donut-center,
+  .ns-pie-item,
+  .ns-pie-item .ns-swatch,
+  .ns-pie-fiber {
+    animation: none;
+  }
+
+  .ns-donut-p {
+    stroke-dashoffset: 0;
+  }
+
+  .ns-donut-c {
+    stroke-dashoffset: -58.811;
+  }
+
+  .ns-donut-f {
+    stroke-dashoffset: -158.337;
+  }
+
+  .ns-ring-fill,
+  .ns-flat-fill,
+  .ns-protein-fill,
+  .ns-home-item,
+  .ns-btn,
+  button.ns-btn,
+  .ns-home-charts .ns-home-calories,
+  .ns-home-charts .ns-home-charts-title {
+    transition: none;
+  }
+
+  .ns-home-charts .ns-flat-fill,
+  .ns-home-charts .ns-flat-tip,
+  .ns-home-charts .ns-home-calories,
+  .ns-home-charts .ns-home-charts-title {
+    transition: none !important;
+  }
+
+  .ns-home-charts .ns-flat-fill,
+  .ns-home-charts.is-inview .ns-flat-fill {
+    stroke-dashoffset: calc(var(--ring-c) * (1 - var(--ring-p, 0)));
+  }
+
+  .ns-home-charts .ns-flat-tip,
+  .ns-home-charts.is-inview .ns-flat-tip {
+    transform: rotate(calc(var(--ring-p, 0) * 360deg));
+    opacity: clamp(0, calc((var(--ring-p, 0) - 0.015) * 40), 1);
+  }
+
+  .ns-home-charts .ns-home-calories,
+  .ns-home-charts .ns-home-charts-title {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ns-home {
+  display: grid;
+  grid-template-columns: minmax(15.5rem, 32%) minmax(0, 1fr);
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--sheet);
+}
+
+.ns-home-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  min-width: 0;
+  padding: 1.6rem 1.35rem 1.45rem;
+  background: var(--bg);
+}
+
+.ns-home-copy {
+  min-width: 0;
+  max-width: 38rem;
+}
+
+.ns-home-charts {
+  --ring-c: 226.195;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.15rem 0 0;
+  background: transparent;
+  border: 0;
+}
+
+/* Fill each ring from 0% to intake/goal when scrolled into view. */
+.ns-home-charts.is-inview .ns-flat-fill {
+  stroke-dashoffset: calc(var(--ring-c) * (1 - var(--ring-p, 0)));
+}
+
+.ns-home-charts .ns-flat-card:nth-child(1) .ns-flat-fill {
+  transition-delay: 0.05s;
+}
+
+.ns-home-charts .ns-flat-card:nth-child(2) .ns-flat-fill {
+  transition-delay: 0.18s;
+}
+
+.ns-home-charts .ns-flat-card:nth-child(3) .ns-flat-fill {
+  transition-delay: 0.31s;
+}
+
+.ns-home-charts .ns-flat-card:nth-child(4) .ns-flat-fill {
+  transition-delay: 0.44s;
+}
+
+.ns-home-charts .ns-home-calories,
+.ns-home-charts .ns-home-charts-title {
+  opacity: 0;
+  transform: translateY(0.45rem);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
+}
+
+.ns-home-charts.is-inview .ns-home-calories,
+.ns-home-charts.is-inview .ns-home-charts-title {
+  opacity: 1;
+  transform: none;
+}
+
+.ns-home-charts.is-inview .ns-home-calories {
+  transition-delay: 0.08s;
+}
+
+.ns-home-charts-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--pine-deep);
+}
+
+.ns-home-calories {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.ns-home-cal-number {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 6vw, 3.75rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  color: var(--pine-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-home-cal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.ns-home-cal-unit {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.ns-home-cal-figure {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-home-cal-left {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-home-charts-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem 0.5rem;
+}
+
+.ns-home-charts .ns-flat-card {
+  padding: 0.25rem 0.15rem 0.35rem;
+}
+
+.ns-home-charts .ns-flat {
+  width: min(6.5rem, 100%);
+}
+
+.ns-home-charts .ns-flat-center-figure {
+  font-size: clamp(0.62rem, 1.2vw, 0.75rem);
+}
+
+.ns-home-stage .ns-preview {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.ns-home-stage .ns-display {
+  font-size: clamp(1.85rem, 3.2vw, 2.65rem);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ns-home-stage .ns-lede {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.ns-home-menu {
+  background: #e4ebe6;
+  border-right: 1px solid var(--line);
+  padding: 1.25rem 0.8rem 0.9rem;
+}
+
+.ns-home-menu .ns-kicker {
+  margin: 0 0.55rem 0.7rem;
+}
+
+.ns-home-links {
+  display: flex;
+  flex-direction: column;
+}
+
+.ns-home-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 0.55rem;
+  border-top: 1px solid rgba(28, 60, 52, 0.14);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.ns-home-item:hover {
+  background: rgba(251, 250, 247, 0.72);
+  transform: translateX(2px);
+}
+
+.ns-home-item:hover .ns-home-label {
+  color: var(--pine);
+}
+
+.ns-home-icon {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--pine);
+  transition: transform 0.2s ease;
+}
+
+.ns-home-item:hover .ns-home-icon {
+  transform: translateY(-1px);
+}
+
+.ns-home-text {
+  min-width: 0;
+}
+
+.ns-home-label {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: color 0.2s ease;
+}
+
+.ns-home-note {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.ns-home-mark {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-bottom: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--sheet);
+  color: var(--pine);
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.ns-home-stage .ns-home-copy .ns-display {
+  font-size: clamp(1.85rem, 3.2vw, 2.65rem);
+}
+
+.ns-macros {
+  scroll-margin-top: 1.25rem;
 }
 
 .ns-kicker {
@@ -468,6 +1381,16 @@ a {
   text-decoration: none;
   cursor: pointer;
   box-shadow: none !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.ns-btn:hover {
+  transform: translateY(-1px);
+}
+
+.ns-btn:active {
+  transform: translateY(0);
 }
 
 button.ns-btn {
@@ -520,9 +1443,14 @@ button.ns-btn-ghost:hover {
 .ns-btn:focus-visible,
 button.ns-btn:focus-visible,
 .ns-nav-link:focus-visible,
-.ns-mark:focus-visible {
+.ns-mark:focus-visible,
+.ns-home-item:focus-visible {
   outline: 2px solid var(--pine);
   outline-offset: 3px;
+}
+
+.ns-home-item:focus-visible {
+  outline-offset: -2px;
 }
 
 .ns-calorie {
@@ -1047,9 +1975,61 @@ button.ns-btn[disabled] {
 }
 
 @media (max-width: 900px) {
+  .ns-home {
+    grid-template-columns: 1fr;
+  }
+
+  .ns-home-menu {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ns-home-charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ns-home-stage .ns-preview {
+    max-width: 40rem;
+  }
+
   .ns-hero {
     grid-template-columns: 1fr;
     gap: 2.5rem;
+  }
+
+  .ns-splash {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.85rem;
+  }
+
+  .ns-splash .ns-display {
+    max-width: none;
+  }
+
+  .ns-splash-visual {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ns-protein {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.85rem;
+  }
+
+  .ns-protein-intro {
+    max-width: none;
+  }
+
+  .ns-intake-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ns-home-charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ns-preview {
@@ -1105,6 +2085,38 @@ button.ns-btn[disabled] {
   .ns-display {
     font-size: clamp(2.6rem, 11vw, 3.6rem);
   }
+
+  .ns-splash .ns-display {
+    font-size: clamp(2.55rem, 10vw, 3.4rem);
+  }
+
+  .ns-splash-visual {
+    gap: 1.15rem;
+  }
+
+  .ns-donut {
+    width: min(11.5rem, 56vw);
+  }
+
+  .ns-protein-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ns-intake-grid {
+    gap: 0.7rem;
+  }
+
+  .ns-home-charts {
+    padding: 1rem 0.75rem;
+  }
+
+  .ns-home-charts-grid {
+    gap: 0.55rem;
+  }
+
+  .ns-flat-center-figure {
+    font-size: 0.7rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1139,6 +2151,16 @@ button.ns-btn[disabled] {
 }
 
 @media (max-width: 420px) {
+  .ns-intake-grid,
+  .ns-home-charts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ns-ring-card,
+  .ns-flat-card {
+    padding: 0.75rem 0.4rem 0.85rem;
+  }
+
   .ns-nav,
   .ns-main,
   .ns-footer-inner {
