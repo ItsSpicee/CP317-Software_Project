@@ -4,6 +4,7 @@ import math
 from pathlib import Path
 
 from .grocery_planner import invalidate_weekly_plan
+from .navigation import NavigationState
 from .ui import actions, entry, field, go, menu, page, press, steps
 
 
@@ -27,6 +28,7 @@ FOOD_ALLERGIES = [
 ]
 
 class PersonalizationState(rx.State):
+    editing: bool = False
     allergies: list[str] = []
     diet_types: list[str] = []
     fiber: float = 30.0
@@ -35,6 +37,16 @@ class PersonalizationState(rx.State):
     current_goal: str = "Maintenance"
     calories_error: str = ""
     goal_error: str = ""
+
+    @rx.event
+    def load_setup(self):
+        self.editing = False
+        self.load_saved_preferences()
+
+    @rx.event
+    def load_editor(self):
+        self.editing = True
+        self.load_saved_preferences()
 
     @rx.event
     def load_saved_preferences(self):
@@ -120,7 +132,7 @@ class PersonalizationState(rx.State):
 
     @rx.event
     def cancel(self):
-        return rx.redirect("/")
+        return rx.redirect("/overview" if self.editing else "/onboarding")
 
     @rx.event
     def submit(self, form_data):
@@ -165,6 +177,7 @@ class PersonalizationState(rx.State):
             previous = json.loads(preferences_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             previous = None
+        USER_DATA_FOLDER.mkdir(parents=True, exist_ok=True)
         with open(preferences_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=4)
         if previous != payload:
@@ -173,7 +186,7 @@ class PersonalizationState(rx.State):
         self.calories = "" if calories in ("", None) else str(int(calories))
         self.current_goal = current_goal
 
-        return rx.redirect("/targets")
+        return rx.redirect("/overview") if self.editing else NavigationState.preferences_saved
 
 
 def allergy_checkbox(allergy: str) -> rx.Component:
@@ -202,14 +215,14 @@ def diet_checkbox(diet: str) -> rx.Component:
     )
 
 
-def personalize() -> rx.Component:
+def personalize(edit: bool = False) -> rx.Component:
     return page(
         rx.el.div(
-            steps(2),
-            rx.el.p("Step 2", class_name="ns-kicker"),
+            *([] if edit else [steps(2), rx.el.p("Step 2", class_name="ns-kicker")]),
             rx.el.h1("Preferences", class_name="ns-title"),
             rx.el.p(
-                "Optional. Skip this if you only want the estimate from your profile.",
+                "Update your preferences. Saving recalculates your daily targets."
+                if edit else "Optional. Skip this if you only want the estimate from your profile.",
                 class_name="ns-lede",
             ),
             rx.form(
@@ -307,18 +320,13 @@ def personalize() -> rx.Component:
                         class_name="ns-group",
                     ),
                     actions(
-                        [
-                            go("Back", "/onboarding"),
-                            press(
-                                "Cancel",
-                                "ghost",
-                                type="button",
-                                on_click=PersonalizationState.cancel,
-                            ),
-                        ],
+                        [go("Cancel", "/overview")],
+                        [press("Save changes", "primary", type="submit")],
+                    ) if edit else actions(
+                        [go("Back", "/onboarding")],
                         [
                             press("Skip", "secondary", type="submit"),
-                            press("Submit", "primary", type="submit"),
+                            press("View targets", "primary", type="submit"),
                         ],
                     ),
                     class_name="ns-stack",
@@ -329,4 +337,5 @@ def personalize() -> rx.Component:
             class_name="ns-sheet",
         ),
         current="preferences",
+        setup=not edit,
     )

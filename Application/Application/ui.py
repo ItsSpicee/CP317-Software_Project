@@ -1,37 +1,51 @@
 import reflex as rx
 
 
-def page(*children, current: str = "") -> rx.Component:
-    def link(label: str, href: str, key: str) -> rx.Component:
-        class_name = "ns-nav-link is-active" if current == key else "ns-nav-link"
-        return rx.link(label, href=href, class_name=class_name, underline="none")
+def page(*children, current: str = "", setup: bool = False) -> rx.Component:
+    from .navigation import NavigationState
 
-    return rx.el.div(
-        rx.el.header(
-            rx.link("NutriSpoke", href="/", class_name="ns-mark", underline="none"),
-            rx.el.nav(
-                link("Profile", "/onboarding", "profile"),
-                link("Preferences", "/personalize", "preferences"),
-                link("Targets", "/targets", "targets"),
-                link("Groceries", "/groceries", "groceries"),
-                link("Meals", "/meals", "meals"),
-                class_name="ns-nav-links",
-                aria_label="Primary",
-            ),
-            class_name="ns-nav",
-        ),
-        rx.el.main(*children, class_name="ns-main"),
-        rx.el.footer(
-            rx.el.div(
-                rx.el.p(
-                    "Estimates from a fixed equation. They are not medical advice.",
-                    class_name="ns-foot",
-                ),
-                class_name="ns-footer-inner",
-            ),
-            class_name="ns-footer",
-        ),
-        class_name="ns-page",
+    footer = rx.el.footer(
+        rx.el.p("Estimates from a fixed equation. They are not medical advice.", class_name="ns-foot"),
+        class_name="ns-hub-footer",
+    )
+    if setup:
+        return rx.el.div(
+            rx.el.header(rx.el.span("NutriSpoke", class_name="ns-mark"), class_name="ns-nav"),
+            rx.el.main(*children, class_name="ns-main"), footer, class_name="ns-page",
+        )
+
+    links = [
+        ("Overview", "/overview", "overview", "layout-dashboard"),
+        ("Profile", "/profile", "profile", "user-round"),
+        ("Preferences", "/preferences", "preferences", "sliders-horizontal"),
+        ("Targets", "/targets", "targets", "target"),
+        ("Daily tracking", "/tracking", "tracking", "notebook-pen"),
+        ("Progress", "/progress", "progress", "chart-no-axes-combined"),
+        ("Grocery", "/groceries", "groceries", "shopping-basket"),
+        ("Meals", "/meals", "meals", "utensils"),
+        ("Settings", "/settings", "settings", "settings"),
+    ]
+    sidebar = rx.el.aside(
+        rx.link("NutriSpoke", href="/overview", class_name="ns-mark", underline="none"),
+        rx.el.p("YOUR MENU", class_name="ns-sidebar-caption"),
+        rx.el.nav(*[
+            rx.link(
+                rx.icon(icon, size=19), rx.el.span(label), href=href,
+                class_name="ns-sidebar-link is-active" if key == current else "ns-sidebar-link",
+                custom_attrs={"aria-current": "page"} if key == current else {},
+                underline="none",
+            ) for label, href, key, icon in links
+        ], aria_label="Main menu", class_name="ns-sidebar-links"),
+        rx.el.p("A little direction for every day.", class_name="ns-sidebar-note"),
+        class_name="ns-sidebar",
+    )
+    return rx.cond(
+        NavigationState.complete,
+        rx.el.div(sidebar, rx.el.div(
+            rx.el.main(*children, class_name="ns-hub-main"), footer,
+            class_name="ns-hub-content",
+        ), class_name="ns-hub"),
+        rx.el.p("Opening setup?", role="status", class_name="ns-main"),
     )
 
 

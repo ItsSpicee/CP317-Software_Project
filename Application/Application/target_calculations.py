@@ -3,7 +3,8 @@ import math
 import reflex as rx
 
 from . import get_targets as nutrition
-from .ui import actions, energy_bar, go, macro_line, page, steps
+from .ui import actions, energy_bar, go, macro_line, page, press, steps
+from .navigation import NavigationState
 
 
 def _energy_shares(macros: dict[str, float]) -> dict[str, int]:
@@ -118,11 +119,10 @@ class TargetState(rx.State):
         self.detail_line = str(values["detail_line"])
 
 
-def targets() -> rx.Component:
+def targets(edit: bool = True) -> rx.Component:
     return page(
         rx.el.div(
-            steps(3),
-            rx.el.p("Step 3", class_name="ns-kicker"),
+            *([] if edit else [steps(3), rx.el.p("Step 3", class_name="ns-kicker")]),
             rx.el.h1("Your targets", class_name="ns-title"),
             rx.el.p(TargetState.calories, class_name="ns-calorie"),
             rx.el.p("kcal / day", class_name="ns-unit-label"),
@@ -152,10 +152,11 @@ def targets() -> rx.Component:
                 class_name="ns-callout",
             ),
             actions(
-                [go("Back", "/personalize")],
-                [go("Plan groceries", "/groceries", "primary")],
+                [go("Edit preferences", "/preferences")] if edit else [go("Back", "/personalize")],
+                [go("Overview", "/overview", "primary")] if edit else [press("Continue to main menu", on_click=NavigationState.finish)],
             ),
             class_name="ns-sheet ns-sheet-narrow",
         ),
         current="targets",
+        setup=not edit,
     )
