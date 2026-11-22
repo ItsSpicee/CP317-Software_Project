@@ -639,7 +639,7 @@ def grocery() -> rx.Component:
                     ),
                     actions(
                         [
-                            go("Back", "/targets"),
+                            go("Overview", "/overview"),
                             press(
                                 "Record purchase",
                                 "secondary",
@@ -686,7 +686,7 @@ def grocery() -> rx.Component:
                         ),
                     ),
                     actions(
-                        [go("Back", "/targets")],
+                        [go("Overview", "/overview")],
                         [
                             press(
                                 "Generate weekly plan",

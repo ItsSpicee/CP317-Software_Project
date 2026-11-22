@@ -5,6 +5,7 @@ from pathlib import Path
 import reflex as rx
 
 from .grocery_planner import invalidate_weekly_plan
+from .navigation import NavigationState
 from .ui import actions, entry, field, go, menu, page, press, steps
 
 PARENT_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,7 @@ def _convert_measure(value: str, factor: float) -> str:
 
 
 class ButtonEvent(rx.State):
+    editing: bool = False
     sex: str = ""
     activity_level: str = "Low"
     height: str = ""
@@ -51,6 +53,16 @@ class ButtonEvent(rx.State):
     height_error: str = ""
     weight_error: str = ""
     age_error: str = ""
+
+    @rx.event
+    def load_setup(self):
+        self.editing = False
+        self.load_saved_profile()
+
+    @rx.event
+    def load_editor(self):
+        self.editing = True
+        self.load_saved_profile()
 
     @rx.event
     def load_saved_profile(self):
@@ -122,7 +134,7 @@ class ButtonEvent(rx.State):
 
     @rx.event
     def cancel(self):
-        return rx.redirect("/")
+        return rx.redirect("/overview" if self.editing else "/onboarding")
 
     @rx.event
     def submit(self, form_data: dict):
@@ -218,6 +230,7 @@ class ButtonEvent(rx.State):
             previous = json.loads(profile_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             previous = None
+        USER_DATA_FOLDER.mkdir(parents=True, exist_ok=True)
         with open(profile_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=4)
         if previous != payload:
@@ -232,14 +245,13 @@ class ButtonEvent(rx.State):
         self.age = _format_number(age)
 
         # Redirect after processing the submitted data.
-        return rx.redirect("/personalize")
+        return rx.redirect("/overview") if self.editing else NavigationState.profile_saved
 
 
-def onboarding() -> rx.Component:
+def onboarding(edit: bool = False) -> rx.Component:
     return page(
         rx.el.div(
-            steps(1),
-            rx.el.p("Step 1", class_name="ns-kicker"),
+            *([] if edit else [steps(1), rx.el.p("Step 1", class_name="ns-kicker")]),
             rx.el.h1("About you", class_name="ns-title"),
             rx.el.p(
                 "Sex, age, size, and activity set the maintenance estimate. Leave something blank and a typical adult value is used.",
@@ -362,13 +374,13 @@ def onboarding() -> rx.Component:
                         error=ButtonEvent.age_error,
                     ),
                     actions(
-                        [
-                            go("Back", "/"),
-                            press("Cancel", "ghost", type="button", on_click=ButtonEvent.cancel),
-                        ],
+                        [go("Cancel", "/overview")],
+                        [press("Save changes", "primary", type="submit")],
+                    ) if edit else actions(
+                        [],
                         [
                             press("Skip", "secondary", type="submit"),
-                            press("Submit", "primary", type="submit"),
+                            press("Continue", "primary", type="submit"),
                         ],
                     ),
                     class_name="ns-stack",
@@ -379,4 +391,5 @@ def onboarding() -> rx.Component:
             class_name="ns-sheet",
         ),
         current="profile",
+        setup=not edit,
     )
