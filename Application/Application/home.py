@@ -4,10 +4,11 @@ import reflex as rx
 
 from . import get_targets as nutrition
 from .grocery import GroceryState
+from .intake import MacroIntakeState
 from .meals import MealState
 from .navigation import NavigationState
 from .target_calculations import TargetState
-from .ui import go, page, press
+from .ui import go, intake_pie_row, page, press
 
 
 class OverviewState(rx.State):
@@ -67,6 +68,13 @@ def overview() -> rx.Component:
                 ], class_name="ns-overview-macros"),
                 go("View targets", "/targets", "secondary"),
                 class_name="ns-overview-card",
+            ),
+            rx.el.section(
+                rx.el.h2("Selected meals vs daily targets", class_name="ns-card-title"),
+                rx.el.p(MacroIntakeState.calorie_figure, class_name="ns-overview-copy"),
+                intake_pie_row(MacroIntakeState, "ns-intake-grid ns-home-charts-grid"),
+                rx.el.p("Totals are from saved meal selections; they are not a daily food log.", class_name="ns-hint"),
+                class_name="ns-overview-card ns-overview-tracking ns-home-charts",
             ),
             rx.el.section(
                 rx.el.h2("Daily tracking", class_name="ns-card-title"),

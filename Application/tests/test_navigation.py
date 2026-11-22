@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from Application import get_targets, grocery_planner, meal_planner, navigation, onboarding, personalize
 from Application.grocery import GroceryState
+from Application.intake import MacroIntakeState
 from Application.meals import MealState
 from Application.target_calculations import TargetState
 
@@ -58,6 +59,19 @@ class NavigationTests(unittest.TestCase):
             first = on_load[0] if isinstance(on_load, list) else on_load
             self.assertIs(first.fn, navigation.NavigationState.guard_menu.fn)
 
+    def test_entrypoint_and_setup_routes_are_connected(self):
+        from Application.Application import app
+
+        pages = app._unevaluated_pages
+        self.assertIs(pages["index"].on_load.fn, navigation.NavigationState.start.fn)
+        expected = {
+            "onboarding": (navigation.NavigationState.guard_profile, onboarding.ButtonEvent.load_setup),
+            "personalize": (navigation.NavigationState.guard_preferences, personalize.PersonalizationState.load_setup),
+            "setup-targets": (navigation.NavigationState.guard_targets, TargetState.load_targets),
+        }
+        for route, handlers in expected.items():
+            self.assertEqual([event.fn for event in pages[route].on_load], [event.fn for event in handlers])
+
     def test_fresh_session_starts_with_blank_data_only_once(self):
         self.write("user_data.json", {"age": 50})
         navigation.NavigationState.guard_profile.fn(self.nav)
@@ -100,7 +114,7 @@ class NavigationTests(unittest.TestCase):
             self.write(name, {})
         (self.folder / "keep.txt").write_text("keep", encoding="utf-8")
         states = {cls: cls(_reflex_internal_init=True) for cls in (
-            onboarding.ButtonEvent, personalize.PersonalizationState, TargetState, GroceryState, MealState)}
+            onboarding.ButtonEvent, personalize.PersonalizationState, TargetState, GroceryState, MealState, MacroIntakeState)}
         states[MealState]._meals = [{"name": "old meal"}]
         states[GroceryState].has_plan = True
         self.nav.complete = True
