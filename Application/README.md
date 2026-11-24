@@ -20,7 +20,7 @@ data. Feature URLs redirect to the current setup step until setup is complete.
 
 Settings provides a confirmed developer reset that deletes all JSON under
 `User Data`, including all session folders, and resets active form, target,
-grocery, meal, and navigation state. Reset waits for active generation in that
+grocery, meal, and navigation state, then returns to the intro page (`/`). Reset waits for active generation in that
 browser session to finish. Profile and preferences are still shared files, so
 this remains a single-user prototype; starting a fresh browser session or
 resetting affects the saved data used by other sessions.
@@ -28,6 +28,42 @@ resetting affects the saved data used by other sessions.
 Run `python -m unittest discover -s tests -p test_navigation.py` for isolated
 setup-ordering, editing, invalidation, and reset tests. Run `reflex compile --dry`
 from this directory to check all pages compile.
+
+## Manual inventory
+
+The Inventory sidebar page (`/inventory`) manages stock independently of grocery
+and meal generation. All sessions share one central `User Data/inventory.json`
+file, with separate lists keyed by browser session token:
+
+```json
+{"sessions": {"browser-token": [{"name": "Rice", "quantity_g": 500, "grocery_type": "dry_goods"}]}}
+```
+
+The Reflex-independent backend is `Application/inventory.py`:
+
+```python
+from Application.inventory import add, remove, modify, get_inventory
+
+add("Rice", 500, "dry_goods", session_id=token)
+modify("Rice", -100, session_id=token)
+remove("Rice", 50, session_id=token)
+items = get_inventory(session_id=token)
+```
+
+All amounts are grams. Categories are `meat`, `dairy`, `produce`, and `dry_goods`.
+Adding requires at least 1 g; repeated names merge case-insensitively, provided
+the category matches. `modify` accepts a signed change and rejects results below
+1 g. `remove` accepts a positive amount, deleting an item when its full weight is
+removed. Over-removal and partial removals leaving less than 1 g are rejected.
+Every successful operation returns the updated session item list and saves it
+atomically. Invalid input and unreadable saved data leave the file unchanged.
+A process lock prevents overlapping updates within this single-process prototype;
+this is not a multi-worker storage system.
+
+Profile/preference edits and grocery or meal generation do not change manual
+inventory. The developer reset and fresh-session setup clear it with the rest of
+the prototype data. No generated grocery purchases are imported automatically.
+Run `python -m unittest discover -s tests -p test_inventory.py` for inventory tests.
 
 NutriSpoke estimates a daily calorie target and displays protein, carbohydrate, fat, and fiber targets. The estimates use the profile and personalization choices saved in `User Data/user_data.json` and `User Data/user_personalization_data.json`.
 

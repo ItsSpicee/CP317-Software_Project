@@ -103,7 +103,7 @@ def settings() -> rx.Component:
         rx.el.p("Prototype controls", class_name="ns-kicker"),
         rx.el.h1("Settings", class_name="ns-title"),
         rx.el.h2("Reset profile", class_name="ns-card-title"),
-        rx.el.p("Delete the saved profile, preferences, grocery plans, inventory, meal suggestions, and selected meals for all prototype sessions. Then start onboarding from scratch.", class_name="ns-lede"),
+        rx.el.p("Delete the saved profile, preferences, grocery plans, inventory, meal suggestions, and selected meals for all prototype sessions. Then return to the intro page to start fresh.", class_name="ns-lede"),
         rx.cond(busy, rx.el.p("Wait for grocery or meal generation to finish before resetting.", class_name="ns-hint")),
         rx.cond(
             NavigationState.reset_confirmation,

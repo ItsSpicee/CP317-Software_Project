@@ -19,10 +19,11 @@ def page(*children, current: str = "", setup: bool = False) -> rx.Component:
         ("Profile", "/profile", "profile", "user-round"),
         ("Preferences", "/preferences", "preferences", "sliders-horizontal"),
         ("Targets", "/targets", "targets", "target"),
-        ("Daily tracking", "/tracking", "tracking", "notebook-pen"),
-        ("Progress", "/progress", "progress", "chart-no-axes-combined"),
+        ("Inventory", "/inventory", "inventory", "package"),
         ("Grocery", "/groceries", "groceries", "shopping-basket"),
         ("Meals", "/meals", "meals", "utensils"),
+        ("Daily tracking", "/tracking", "tracking", "notebook-pen"),
+        ("Progress", "/progress", "progress", "chart-no-axes-combined"),
         ("Settings", "/settings", "settings", "settings"),
     ]
     sidebar = rx.el.aside(

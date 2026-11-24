@@ -2238,3 +2238,24 @@ button.ns-btn[disabled] {
 .ns-overview-tracking { grid-column: 1 / -1; }
 .ns-tracking-preview { max-width: 720px; margin: 1.5rem 0; }
 .ns-tracking-preview img { display: block; border-radius: 10px; }
+
+/* Manual inventory */
+.ns-inventory-grid { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.4fr); gap: 1.5rem; margin-top: 2rem; align-items: start; }
+.ns-inventory-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.4rem; color: var(--pine); }
+.ns-inventory-heading .ns-card-title { margin: 0; }
+.ns-inventory-list { list-style: none; padding: 0; margin: 1.25rem 0 0; }
+.ns-inventory-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 0; border-top: 1px solid var(--line); }
+.ns-inventory-item-name, .ns-inventory-item-actions { display: flex; align-items: center; gap: .85rem; min-width: 0; }
+.ns-inventory-item-name h3 { overflow-wrap: anywhere; }
+.ns-inventory-icon { flex-shrink: 0; color: var(--pine); }
+.ns-inventory-item-name { flex: 1; }
+.ns-inventory-item-actions { flex: 0 1 60%; justify-content: flex-end; }
+.ns-inventory-item-actions .ns-grocery-qty { min-width: 0; flex-shrink: 1; white-space: normal; overflow-wrap: anywhere; text-align: right; }
+.ns-inventory-item-name > div { min-width: 0; }
+.ns-inventory-row-buttons { display: flex; flex-direction: column; gap: .35rem; flex-shrink: 0; }
+.ns-inventory-summary { overflow-wrap: anywhere; }
+.ns-inventory-empty { padding: 3rem 1rem; text-align: center; color: var(--faint); }
+.ns-inventory-empty > svg { margin: 0 auto 1rem; }
+.ns-inventory-empty .ns-overview-copy { margin-bottom: .25rem; }
+.ns-inventory-adjust { margin-top: 1.5rem; }
+.ns-inventory-filters { margin-bottom: 1.5rem; }

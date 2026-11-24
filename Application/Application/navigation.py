@@ -95,6 +95,7 @@ class NavigationState(rx.State):
     async def reset_profile(self):
         from .grocery import GroceryState
         from .intake import MacroIntakeState
+        from .inventory_page import InventoryState
         from .meals import MealState
         from .onboarding import ButtonEvent
         from .personalize import PersonalizationState
@@ -112,10 +113,10 @@ class NavigationState(rx.State):
         except OSError:
             self.reset_error = "Could not clear saved data. Try resetting again."
             return
-        for state_type in (ButtonEvent, PersonalizationState, TargetState, GroceryState, MealState, MacroIntakeState):
+        for state_type in (ButtonEvent, PersonalizationState, TargetState, GroceryState, MealState, MacroIntakeState, InventoryState):
             state = await self.get_state(state_type)
             state.reset()
         meals._meals = []
         self.reset()
         self.initialized = True
-        return rx.redirect("/onboarding")
+        return rx.redirect("/")

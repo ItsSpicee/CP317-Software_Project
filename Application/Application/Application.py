@@ -8,6 +8,7 @@ from .target_calculations import TargetState, targets
 from .navigation import NavigationState
 from .home import OverviewState, overview, placeholder, settings
 from .intake import MacroIntakeState
+from .inventory_page import InventoryState, inventory_page
 from .ui import home_splash, page, process
 
 
@@ -52,6 +53,8 @@ app.add_page(grocery, route="/groceries", title="Groceries ? NutriSpoke",
              on_load=[NavigationState.guard_menu, GroceryState.load_plan])
 app.add_page(meals, route="/meals", title="Meals ? NutriSpoke",
              on_load=[NavigationState.guard_menu, MealState.load_meals])
+app.add_page(inventory_page, route="/inventory", title="Inventory | NutriSpoke",
+             on_load=[NavigationState.guard_menu, InventoryState.load_inventory])
 app.add_page(lambda: placeholder("Daily tracking", "tracking", "Your daily food and nutrition log will live here."),
              route="/tracking", title="Daily tracking ? NutriSpoke", on_load=NavigationState.guard_menu)
 app.add_page(lambda: placeholder("Progress", "progress", "Follow your nutrition habits over time. Progress tracking is coming soon."),
