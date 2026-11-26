@@ -2236,6 +2236,16 @@ button.ns-btn[disabled] {
 .ns-overview-macro dt { color: var(--muted); }
 .ns-overview-macro dd { margin: 0; font-weight: 500; }
 .ns-overview-tracking { grid-column: 1 / -1; }
+.ns-overview-chips { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; padding: 0; margin: 0 0 1.25rem; }
+.ns-overview-chip { border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem; font-size: .85rem; color: var(--ink); background: var(--sheet); }
+.ns-overview-hero { margin-top: 1.75rem; }
+.ns-overview-hero .ns-overview-calories { font-size: 3.4rem; }
+.ns-overview-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+.ns-overview-meals { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+.ns-overview-meals li { padding: .45rem 0; border-bottom: 1px solid var(--line); }
+@media (max-width: 900px) {
+  .ns-overview-actions { grid-template-columns: 1fr; }
+}
 .ns-tracking-preview { max-width: 720px; margin: 1.5rem 0; }
 .ns-tracking-preview img { display: block; border-radius: 10px; }
 

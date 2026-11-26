@@ -1,39 +1,109 @@
 """Main menu overview, future tracking sections, and developer settings."""
 
+import json
+
 import reflex as rx
 
 from . import get_targets as nutrition
-from .grocery import GroceryState
+from . import grocery_planner
+from . import inventory as stock
+from . import meal_planner
+from .grocery import GroceryState, _read_suggestion
 from .intake import MacroIntakeState
 from .meals import MealState
 from .navigation import NavigationState
-from .target_calculations import TargetState
 from .ui import go, intake_pie_row, page, press
+
+INVENTORY_LABELS = (
+    ("meat", "Meat"),
+    ("dairy", "Dairy"),
+    ("produce", "Produce"),
+    ("dry_goods", "Dry goods"),
+)
+
+
+def _clip(text: str, limit: int = 140) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1].rstrip() + "…"
 
 
 class OverviewState(rx.State):
-    profile_summary: str = ""
-    preference_summary: str = ""
+    welcome: str = "Welcome"
+    intent_line: str = ""
+    chips: list[str] = []
+    has_chips: bool = False
+    has_grocery: bool = False
+    grocery_summary: str = ""
+    grocery_note: str = ""
+    has_meals: bool = False
+    meal_names: list[str] = []
+    has_inventory: bool = False
+    inventory_summary: str = ""
 
     @rx.event
     def load_overview(self):
         profile = nutrition._load_json(nutrition.USER_DATA_FOLDER / "user_data.json")
+        name = " ".join(str(profile.get("name") or "").split())
+        self.welcome = f"Welcome, {name}" if name else "Welcome"
         preferences = nutrition._load_json(nutrition.USER_DATA_FOLDER / "user_personalization_data.json")
-        parts = []
-        for field, unit in (("sex", ""), ("age", " years"), ("height", " cm"), ("weight", " kg")):
-            value = profile.get(field)
-            if value not in (None, ""):
-                formatted = f"{value:g}" if isinstance(value, (int, float)) else str(value)
-                parts.append(formatted + unit)
-        parts.append(f"{profile.get('activity_level', 'Low')} activity")
-        self.profile_summary = " · ".join(parts)
-        self.preference_summary = str(preferences.get("current_goal", "Maintenance"))
+        targets = nutrition.get_targets()
+        goal = str(preferences.get("current_goal") or "Maintenance").strip() or "Maintenance"
+        line = f"{goal} · {float(targets['calories']):,.0f} kcal"
         if preferences.get("muscle_gain"):
-            self.preference_summary += " · Muscle Gain"
+            line += " · Muscle gain"
+        self.intent_line = line
+        chips: list[str] = []
         for field in ("allergies", "diet_types"):
             choices = preferences.get(field, [])
-            if choices:
-                self.preference_summary += " · " + ", ".join(choices)
+            if isinstance(choices, list):
+                chips.extend(str(choice).strip() for choice in choices if str(choice).strip())
+        self.chips = chips
+        self.has_chips = bool(chips)
+
+        session_id = self.rx_router_session.client_token or ""
+        suggestion = _read_suggestion(grocery_planner.suggestion_path(session_id))
+        if suggestion is None:
+            self.has_grocery = False
+            self.grocery_summary = ""
+            self.grocery_note = ""
+        else:
+            count = len(suggestion["items"])
+            weekly = float(suggestion["estimated_weekly_totals"]["calories"])
+            noun = "item" if count == 1 else "items"
+            self.has_grocery = True
+            self.grocery_summary = f"{count} {noun} · {weekly:,.0f} kcal this week"
+            self.grocery_note = _clip(str(suggestion.get("notes", "")))
+
+        names: list[str] = []
+        try:
+            saved = meal_planner._read_json(meal_planner.selected_meals_path(session_id))
+            meals = saved.get("meals", [])
+            if isinstance(meals, list):
+                names = [
+                    str(meal.get("name", "")).strip()
+                    for meal in meals
+                    if isinstance(meal, dict) and str(meal.get("name", "")).strip()
+                ]
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            names = []
+        self.meal_names = names
+        self.has_meals = bool(names)
+
+        counts = {key: 0 for key, _label in INVENTORY_LABELS}
+        try:
+            items = stock.get_inventory(session_id=session_id) if session_id else []
+        except ValueError:
+            items = []
+        for item in items:
+            kind = item.get("grocery_type")
+            if kind in counts:
+                counts[kind] += 1
+        self.has_inventory = sum(counts.values()) > 0
+        self.inventory_summary = " · ".join(
+            f"{label} {counts[key]}" for key, label in INVENTORY_LABELS if counts[key]
+        )
 
 
 def tracking_preview() -> rx.Component:
@@ -46,43 +116,71 @@ def tracking_preview() -> rx.Component:
 
 def overview() -> rx.Component:
     return page(
-        rx.el.p("Your daily direction", class_name="ns-kicker"),
-        rx.el.h1("Overview", class_name="ns-title"),
-        rx.el.p("Your profile is set. Here’s where you stand today.", class_name="ns-lede"),
+        rx.el.p("Today", class_name="ns-kicker"),
+        rx.el.h1(OverviewState.welcome, class_name="ns-title"),
+        rx.el.p(OverviewState.intent_line, class_name="ns-lede"),
+        rx.cond(
+            OverviewState.has_chips,
+            rx.el.ul(
+                rx.foreach(
+                    OverviewState.chips,
+                    lambda chip: rx.el.li(chip, class_name="ns-overview-chip"),
+                ),
+                class_name="ns-overview-chips",
+            ),
+        ),
+        go("Edit profile", "/profile", "ghost"),
+        rx.el.section(
+            rx.el.p(MacroIntakeState.calorie_left, class_name="ns-overview-calories"),
+            rx.el.p("From meals you have selected", class_name="ns-unit-label"),
+            intake_pie_row(MacroIntakeState, "ns-intake-grid ns-home-charts-grid"),
+            rx.el.p("Totals are from saved meal selections; they are not a daily food log.", class_name="ns-hint"),
+            class_name="ns-overview-card ns-overview-hero ns-home-charts",
+        ),
         rx.el.div(
             rx.el.section(
-                rx.icon("user-round", size=23),
-                rx.el.h2("Your profile", class_name="ns-card-title"),
-                rx.el.p(OverviewState.profile_summary, class_name="ns-overview-copy"),
-                rx.el.p(OverviewState.preference_summary, class_name="ns-meta"),
-                go("Edit profile", "/profile", "secondary"),
+                rx.el.h2("This week’s groceries", class_name="ns-card-title"),
+                rx.cond(
+                    OverviewState.has_grocery,
+                    rx.fragment(
+                        rx.el.p(OverviewState.grocery_summary, class_name="ns-overview-copy"),
+                        rx.cond(
+                            OverviewState.grocery_note != "",
+                            rx.el.p(OverviewState.grocery_note, class_name="ns-hint"),
+                        ),
+                    ),
+                    rx.el.p("Build this week’s grocery list.", class_name="ns-overview-copy"),
+                ),
+                go("Open groceries", "/groceries", "secondary"),
                 class_name="ns-overview-card",
             ),
             rx.el.section(
-                rx.el.h2("Daily targets", class_name="ns-card-title"),
-                rx.el.p(TargetState.calories, class_name="ns-overview-calories"),
-                rx.el.p("kcal / day", class_name="ns-unit-label"),
-                rx.el.dl(*[
-                    rx.el.div(rx.el.dt(label), rx.el.dd(value), class_name="ns-overview-macro")
-                    for label, value in [("Protein", TargetState.protein), ("Carbohydrates", TargetState.carbs), ("Fat", TargetState.fat), ("Fiber", TargetState.fiber)]
-                ], class_name="ns-overview-macros"),
-                go("View targets", "/targets", "secondary"),
+                rx.el.h2("Today’s meals", class_name="ns-card-title"),
+                rx.cond(
+                    OverviewState.has_meals,
+                    rx.el.ul(
+                        rx.foreach(
+                            OverviewState.meal_names,
+                            lambda name: rx.el.li(name),
+                        ),
+                        class_name="ns-overview-meals",
+                    ),
+                    rx.el.p("Pick today’s meals.", class_name="ns-overview-copy"),
+                ),
+                go("Open meals", "/meals", "secondary"),
                 class_name="ns-overview-card",
             ),
             rx.el.section(
-                rx.el.h2("Selected meals vs daily targets", class_name="ns-card-title"),
-                rx.el.p(MacroIntakeState.calorie_figure, class_name="ns-overview-copy"),
-                intake_pie_row(MacroIntakeState, "ns-intake-grid ns-home-charts-grid"),
-                rx.el.p("Totals are from saved meal selections; they are not a daily food log.", class_name="ns-hint"),
-                class_name="ns-overview-card ns-overview-tracking ns-home-charts",
+                rx.el.h2("In the kitchen", class_name="ns-card-title"),
+                rx.cond(
+                    OverviewState.has_inventory,
+                    rx.el.p(OverviewState.inventory_summary, class_name="ns-overview-copy"),
+                    rx.el.p("Add what you already have.", class_name="ns-overview-copy"),
+                ),
+                go("Open inventory", "/inventory", "secondary"),
+                class_name="ns-overview-card",
             ),
-            rx.el.section(
-                rx.el.h2("Daily tracking", class_name="ns-card-title"),
-                tracking_preview(),
-                rx.el.p("A place to follow your daily intake. Tracking will be added in a future update.", class_name="ns-overview-copy"),
-                class_name="ns-overview-card ns-overview-tracking",
-            ),
-            class_name="ns-overview-grid",
+            class_name="ns-overview-actions",
         ), current="overview",
     )
 

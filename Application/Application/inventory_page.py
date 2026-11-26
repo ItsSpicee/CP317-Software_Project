@@ -3,7 +3,7 @@
 import reflex as rx
 
 from . import inventory as stock
-from .ui import entry, field, menu, page, press
+from .ui import entry, field, go, menu, page, press
 
 CATEGORY_LABELS = {"meat": "Meat", "dairy": "Dairy", "produce": "Produce", "dry_goods": "Dry goods"}
 CATEGORY_ICONS = {"meat": "beef", "dairy": "milk", "produce": "apple", "dry_goods": "package"}
@@ -147,7 +147,11 @@ def inventory_page() -> rx.Component:
             rx.el.p("What you have", class_name="ns-kicker"),
             rx.el.div(
                 rx.el.h1("Inventory", class_name="ns-title"),
-                press("Refresh", "secondary", type="button", on_click=InventoryState.load_inventory),
+                rx.el.div(
+                    go("Overview", "/overview"),
+                    press("Refresh", "secondary", type="button", on_click=InventoryState.load_inventory),
+                    class_name="ns-actions-group",
+                ),
                 class_name="ns-title-row",
             ),
             rx.el.p("Keep track of the food you have on hand. All weights are in grams.", class_name="ns-lede"),

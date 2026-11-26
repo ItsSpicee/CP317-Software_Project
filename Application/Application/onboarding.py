@@ -39,8 +39,13 @@ def _convert_measure(value: str, factor: float) -> str:
     return _format_number(round(number * factor, 2))
 
 
+def _clean_name(value) -> str:
+    return " ".join(str(value or "").split())
+
+
 class ButtonEvent(rx.State):
     editing: bool = False
+    name: str = ""
     sex: str = ""
     activity_level: str = "Low"
     height: str = ""
@@ -48,6 +53,7 @@ class ButtonEvent(rx.State):
     weight: str = ""
     weight_unit: str = "kg"
     age: str = ""
+    name_error: str = ""
     sex_error: str = ""
     activity_error: str = ""
     height_error: str = ""
@@ -74,6 +80,8 @@ class ButtonEvent(rx.State):
         if not isinstance(saved, dict):
             saved = {}
 
+        self.name = _clean_name(saved.get("name", ""))
+
         sex = str(saved.get("sex", "") or "")
         self.sex = sex if sex in SEX else ""
 
@@ -86,11 +94,17 @@ class ButtonEvent(rx.State):
         self.weight_unit = "kg"
         self.age = _format_number(saved.get("age", ""))
 
+        self.name_error = ""
         self.sex_error = ""
         self.activity_error = ""
         self.height_error = ""
         self.weight_error = ""
         self.age_error = ""
+
+    @rx.event
+    def set_name(self, value: str):
+        self.name = value
+        self.name_error = ""
 
     @rx.event
     def set_sex(self, value: str):
@@ -138,11 +152,16 @@ class ButtonEvent(rx.State):
 
     @rx.event
     def submit(self, form_data: dict):
+        self.name_error = ""
         self.sex_error = ""
         self.activity_error = ""
         self.height_error = ""
         self.weight_error = ""
         self.age_error = ""
+
+        name = _clean_name(form_data.get("name", getattr(self, "name", "")))
+        if len(name) > 40:
+            self.name_error = "Use 40 characters or fewer."
 
         sex = form_data.get("sex", self.sex) or self.sex
         if sex and sex not in SEX:
@@ -213,11 +232,12 @@ class ButtonEvent(rx.State):
             if self.age_error:
                 age = ""
 
-        if any((self.sex_error, self.activity_error, self.height_error, self.weight_error, self.age_error)):
+        if any((self.name_error, self.sex_error, self.activity_error, self.height_error, self.weight_error, self.age_error)):
             return
 
         # Store height and weight in metric units for the rest of the app.
         payload = {
+            "name": name,
             "sex": sex,
             "activity_level": activity,
             "height": height,
@@ -233,9 +253,15 @@ class ButtonEvent(rx.State):
         USER_DATA_FOLDER.mkdir(parents=True, exist_ok=True)
         with open(profile_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=4)
-        if previous != payload:
+        nutrition_fields = ("sex", "activity_level", "height", "weight", "age")
+        previous_nutrition = {
+            field: previous.get(field) for field in nutrition_fields
+        } if isinstance(previous, dict) else None
+        current_nutrition = {field: payload[field] for field in nutrition_fields}
+        if previous_nutrition != current_nutrition:
             invalidate_weekly_plan()
 
+        self.name = name
         self.sex = sex if sex in SEX else ""
         self.activity_level = activity if activity in ACTIVITY_LEVELS else "Low"
         self.height = _format_number(height)
@@ -245,7 +271,7 @@ class ButtonEvent(rx.State):
         self.age = _format_number(age)
 
         # Redirect after processing the submitted data.
-        return rx.redirect("/overview") if self.editing else NavigationState.profile_saved
+        return rx.redirect("/overview") if getattr(self, "editing", False) else NavigationState.profile_saved
 
 
 def onboarding(edit: bool = False) -> rx.Component:
@@ -259,6 +285,22 @@ def onboarding(edit: bool = False) -> rx.Component:
             ),
             rx.form(
                 rx.el.div(
+                    field(
+                        "Name",
+                        entry(
+                            name="name",
+                            id="name",
+                            value=ButtonEvent.name,
+                            on_change=ButtonEvent.set_name,
+                            placeholder="Your name",
+                            autocomplete="name",
+                            max_length=40,
+                            aria_invalid=ButtonEvent.name_error != "",
+                        ),
+                        "Shown on Overview. You can leave this blank.",
+                        for_id="name",
+                        error=ButtonEvent.name_error,
+                    ),
                     rx.el.div(
                         field(
                             "Sex",
