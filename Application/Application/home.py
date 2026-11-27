@@ -1,6 +1,7 @@
 """Main menu overview, future tracking sections, and developer settings."""
 
 import json
+import math
 
 import reflex as rx
 
@@ -12,6 +13,7 @@ from .grocery import GroceryState, _read_suggestion
 from .intake import MacroIntakeState
 from .meals import MealState
 from .navigation import NavigationState
+from .target_calculations import _get_target_values
 from .ui import go, intake_pie_row, page, press
 
 INVENTORY_LABELS = (
@@ -22,11 +24,16 @@ INVENTORY_LABELS = (
 )
 
 
-def _clip(text: str, limit: int = 140) -> str:
-    compact = " ".join(text.split())
-    if len(compact) <= limit:
-        return compact
-    return compact[: limit - 1].rstrip() + "…"
+def _meal_summary(meal: dict) -> dict[str, str]:
+    energy = {}
+    for macro, factor in (("protein", 4), ("carbs", 4), ("fat", 9)):
+        try:
+            value = float(meal.get(macro, 0))
+        except (TypeError, ValueError):
+            value = 0
+        energy[macro] = max(0, value) * factor if math.isfinite(value) else 0
+    dominant = max(energy, key=energy.get) if any(energy.values()) else "unknown"
+    return {"name": str(meal["name"]).strip(), "macro": dominant}
 
 
 class OverviewState(rx.State):
@@ -36,11 +43,13 @@ class OverviewState(rx.State):
     has_chips: bool = False
     has_grocery: bool = False
     grocery_summary: str = ""
-    grocery_note: str = ""
+    grocery_counts: dict[str, int] = {key: 0 for key, _label in INVENTORY_LABELS}
     has_meals: bool = False
     meal_names: list[str] = []
+    meal_rows: list[dict[str, str]] = []
     has_inventory: bool = False
     inventory_summary: str = ""
+    inventory_counts: dict[str, int] = {key: 0 for key, _label in INVENTORY_LABELS}
 
     @rx.event
     def load_overview(self):
@@ -48,12 +57,8 @@ class OverviewState(rx.State):
         name = " ".join(str(profile.get("name") or "").split())
         self.welcome = f"Welcome, {name}" if name else "Welcome"
         preferences = nutrition._load_json(nutrition.USER_DATA_FOLDER / "user_personalization_data.json")
-        targets = nutrition.get_targets()
-        goal = str(preferences.get("current_goal") or "Maintenance").strip() or "Maintenance"
-        line = f"{goal} · {float(targets['calories']):,.0f} kcal"
-        if preferences.get("muscle_gain"):
-            line += " · Muscle gain"
-        self.intent_line = line
+        targets = _get_target_values()
+        self.intent_line = f"{targets['detail_line']} · {float(targets['calories']):,.0f} kcal"
         chips: list[str] = []
         for field in ("allergies", "diet_types"):
             choices = preferences.get(field, [])
@@ -64,10 +69,10 @@ class OverviewState(rx.State):
 
         session_id = self.rx_router_session.client_token or ""
         suggestion = _read_suggestion(grocery_planner.suggestion_path(session_id))
-        if suggestion is None:
+        self.grocery_counts = {key: 0 for key, _label in INVENTORY_LABELS}
+        if suggestion is None or grocery_planner.is_purchased(suggestion, session_id):
             self.has_grocery = False
             self.grocery_summary = ""
-            self.grocery_note = ""
         else:
             count = len(suggestion["items"])
             pantry = len(suggestion.get("inventory_used", []))
@@ -78,11 +83,13 @@ class OverviewState(rx.State):
                 summary += f" · {pantry} from your inventory"
             self.has_grocery = True
             self.grocery_summary = f"{summary} · {weekly:,.0f} kcal this week"
-            self.grocery_note = _clip(str(suggestion.get("notes", "")))
+            for item in suggestion["items"]:
+                self.grocery_counts[item["grocery_type"]] += 1
 
         names: list[str] = []
+        rows: list[dict[str, str]] = []
         try:
-            saved = meal_planner._read_json(meal_planner.selected_meals_path(session_id))
+            saved = {"meals": meal_planner.get_made_meals(session_id)}
             meals = saved.get("meals", [])
             if isinstance(meals, list):
                 names = [
@@ -90,9 +97,12 @@ class OverviewState(rx.State):
                     for meal in meals
                     if isinstance(meal, dict) and str(meal.get("name", "")).strip()
                 ]
+                rows = [_meal_summary(meal) for meal in meals
+                        if isinstance(meal, dict) and str(meal.get("name", "")).strip()]
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             names = []
         self.meal_names = names
+        self.meal_rows = rows
         self.has_meals = bool(names)
 
         counts = {key: 0 for key, _label in INVENTORY_LABELS}
@@ -104,10 +114,45 @@ class OverviewState(rx.State):
             kind = item.get("grocery_type")
             if kind in counts:
                 counts[kind] += 1
-        self.has_inventory = sum(counts.values()) > 0
-        self.inventory_summary = " · ".join(
-            f"{label} {counts[key]}" for key, label in INVENTORY_LABELS if counts[key]
-        )
+        total = sum(counts.values())
+        self.has_inventory = total > 0
+        self.inventory_counts = counts
+        noun = "item" if total == 1 else "items"
+        self.inventory_summary = f"{total} {noun} in your kitchen"
+
+
+def category_tiles(counts, label: str) -> rx.Component:
+    return rx.el.ul(
+        *[
+            rx.el.li(
+                rx.icon(icon, size=17),
+                rx.el.span(name),
+                rx.el.strong(counts[key]),
+                class_name=f"ns-grocery-category ns-category-{key}",
+            )
+            for key, name, icon in (
+                ("meat", "Meat", "beef"),
+                ("dairy", "Dairy", "milk"),
+                ("produce", "Produce", "carrot"),
+                ("dry_goods", "Dry goods", "wheat"),
+            )
+        ],
+        class_name="ns-grocery-categories",
+        aria_label=label,
+    )
+
+
+def overview_meal_row(meal):
+    return rx.el.li(
+        rx.match(
+            meal["macro"],
+            ("protein", rx.icon("beef", size=18, class_name="ns-p", title="Dominant macro: protein")),
+            ("carbs", rx.icon("wheat", size=18, class_name="ns-c", title="Dominant macro: carbs")),
+            ("fat", rx.icon("droplets", size=18, class_name="ns-f", title="Dominant macro: fat")),
+            rx.icon("utensils", size=18, title="Nutrition unavailable"),
+        ),
+        rx.el.span(meal["name"]),
+    )
 
 
 def tracking_preview() -> rx.Component:
@@ -136,9 +181,9 @@ def overview() -> rx.Component:
         go("Edit profile", "/profile", "ghost"),
         rx.el.section(
             rx.el.p(MacroIntakeState.calorie_left, class_name="ns-overview-calories"),
-            rx.el.p("From meals you have selected", class_name="ns-unit-label"),
+            rx.el.p("From meals made today", class_name="ns-unit-label"),
             intake_pie_row(MacroIntakeState, "ns-intake-grid ns-home-charts-grid"),
-            rx.el.p("Totals are from saved meal selections; they are not a daily food log.", class_name="ns-hint"),
+            rx.el.p("Totals are for full recipes marked as made today; portions eaten are not tracked.", class_name="ns-hint"),
             class_name="ns-overview-card ns-overview-hero ns-home-charts",
         ),
         rx.el.div(
@@ -148,10 +193,7 @@ def overview() -> rx.Component:
                     OverviewState.has_grocery,
                     rx.fragment(
                         rx.el.p(OverviewState.grocery_summary, class_name="ns-overview-copy"),
-                        rx.cond(
-                            OverviewState.grocery_note != "",
-                            rx.el.p(OverviewState.grocery_note, class_name="ns-hint"),
-                        ),
+                        category_tiles(OverviewState.grocery_counts, "Items to buy by category"),
                     ),
                     rx.el.p("Build this week’s grocery list.", class_name="ns-overview-copy"),
                 ),
@@ -159,33 +201,44 @@ def overview() -> rx.Component:
                 class_name="ns-overview-card",
             ),
             rx.el.section(
-                rx.el.h2("Today’s meals", class_name="ns-card-title"),
+                rx.el.h2("Meals made today", class_name="ns-card-title"),
                 rx.cond(
                     OverviewState.has_meals,
                     rx.el.ul(
                         rx.foreach(
-                            OverviewState.meal_names,
-                            lambda name: rx.el.li(name),
+                            OverviewState.meal_rows,
+                            overview_meal_row,
                         ),
                         class_name="ns-overview-meals",
+                        tab_index=0,
+                        aria_label="Meals made today, with dominant macro icons",
                     ),
-                    rx.el.p("Pick today’s meals.", class_name="ns-overview-copy"),
+                    rx.el.p("Generate a meal from your inventory.", class_name="ns-overview-copy"),
                 ),
                 go("Open meals", "/meals", "secondary"),
-                class_name="ns-overview-card",
+                class_name="ns-overview-card ns-overview-meal-card",
             ),
             rx.el.section(
                 rx.el.h2("In the kitchen", class_name="ns-card-title"),
                 rx.cond(
                     OverviewState.has_inventory,
-                    rx.el.p(OverviewState.inventory_summary, class_name="ns-overview-copy"),
+                    rx.fragment(
+                        rx.el.p(OverviewState.inventory_summary, class_name="ns-overview-copy"),
+                        category_tiles(OverviewState.inventory_counts, "Inventory items by category"),
+                    ),
                     rx.el.p("Add what you already have.", class_name="ns-overview-copy"),
                 ),
                 go("Open inventory", "/inventory", "secondary"),
                 class_name="ns-overview-card",
             ),
             class_name="ns-overview-actions",
-        ), current="overview",
+        ),
+        rx.el.section(
+            rx.el.h2("Progress", class_name="ns-card-title"),
+            tracking_preview(),
+            class_name="ns-overview-card ns-overview-progress",
+        ),
+        current="overview",
     )
 
 

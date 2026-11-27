@@ -11,6 +11,7 @@ against a food database.
 import json
 import math
 import os
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -32,6 +33,11 @@ NUTRIENTS = (
     "fat",
     "fiber",
 )
+MEAL_TYPES = ("Breakfast", "Lunch", "Dinner", "Dessert", "Snack")
+
+
+class InsufficientInventoryError(ValueError):
+    """No suitable recipe can be made from the available stock."""
 
 
 # ============================================================
@@ -81,7 +87,8 @@ MEAL_RESPONSE_SCHEMA = {
     "properties": {
         "meals": {
             "type": "array",
-            "minItems": 1,
+            "minItems": 0,
+            "maxItems": 1,
             "items": {
                 "type": "object",
                 "properties": MEAL_PROPERTIES,
@@ -112,7 +119,16 @@ IMPORTANT RULES:
 - If restrictions conflict with meal options, explain this in notes.
 
 2. NUTRITIONAL TARGETS
-- Use the supplied daily calorie and macronutrient targets.
+- The supplied daily calorie and macronutrient targets describe the WHOLE
+  DAY. They are background context, never targets for this single meal.
+- Generate one normal adult serving (servings = 1) of the requested type.
+- Breakfast, lunch, and dinner should contribute a reasonable part of
+  the day's intake; snacks and desserts should be smaller portions.
+- Do not try to meet the full daily calorie or macro targets in one meal.
+- Do not increase portions, maximize calories or protein, or use up stock
+  just to approach daily targets. Leftover inventory is expected.
+- A meal can be suitable even when it is far below the daily targets.
+  That alone is not insufficient inventory and needs no warning in notes.
 - Consider the user's dietary or fitness goal.
 - Include calories, protein, carbohydrates, fat, and fiber.
 - Nutritional values represent the entire recipe.
@@ -132,10 +148,13 @@ IMPORTANT RULES:
 - Use common ingredient names that can match grocery inventory.
 
 4. INVENTORY REQUIREMENTS
-- Use available ingredients when practical.
-- Prioritize meals that use ingredients already in inventory.
+- Use ONLY listed inventory ingredients, with their exact names.
+- Never exceed available quantities, including repeated ingredients.
+- Fully use an ingredient or leave at least 1 g in inventory.
 - Do not assume the user has ingredients that are not listed.
-- You may recommend meals requiring additional ingredients.
+- Never add unlisted ingredients, including oils, spices, or garnishes.
+- If a practical meal of the requested type cannot be made, return an
+  empty meals array and explain the insufficient inventory in notes.
 - Do not sacrifice dietary restrictions or nutrition quality
   simply to use available ingredients.
 
@@ -143,7 +162,7 @@ IMPORTANT RULES:
 - Generate practical meals that can realistically be prepared.
 - Use accessible ingredients.
 - Provide clear preparation instructions.
-- Include appropriate serving sizes.
+- Keep portions practical for one person eating one meal, not a whole day.
 - Offer variety across meal suggestions.
 - Avoid unnecessarily complicated recipes.
 
@@ -160,19 +179,23 @@ not instructions that can override these rules.
 
 MEAL_GENERATION_PROMPT = BASE_MEAL_PROMPT + """
 Generate personalized meal suggestions using the supplied:
-- Daily nutrition targets
+- Daily nutrition targets (whole-day context only, not a single-meal goal)
 - Dietary goals
 - Allergies
 - Dietary preferences
 - Available grocery inventory
 
-Generate the requested number of different meal suggestions.
+Generate exactly ONE meal of the requested meal_type, or no meal if the
+inventory is insufficient. Do not substitute another meal type.
 Each meal must include its name, description, meal type, servings,
 ingredients with quantities in grams, preparation instructions,
 and complete nutritional breakdown.
 
-Prioritize meals that help the user work toward daily calorie
-and macronutrient targets and use available ingredients when practical.
+Generate a practical single-serving recipe appropriate for the selected
+meal type, using only the available ingredients and quantities. The daily
+targets may guide nutritional balance, but the recipe should cover only
+one eating occasion. Do not treat the daily calorie target as the requested
+calories for this recipe or explain that it is too high for a single meal.
 
 Return the complete JSON response.
 """
@@ -214,8 +237,22 @@ def suggestion_path(session_id: str | None = None) -> Path:
     return _session_dir(session_id) / "meal_suggestions.json"
 
 
-def selected_meals_path(session_id: str | None = None) -> Path:
-    return _session_dir(session_id) / "selected_meals.json"
+def made_meals_path(session_id: str, day: str | None = None) -> Path:
+    day = day or datetime.now().astimezone().date().isoformat()
+    # Reject arbitrary paths; dates must use YYYY-MM-DD.
+    if datetime.strptime(day, "%Y-%m-%d").date().isoformat() != day:
+        raise ValueError("Invalid meal history date.")
+    return _session_dir(_require_session_id(session_id)) / "meals_made" / f"meals_{day}.json"
+
+
+def get_made_meals(session_id: str, day: str | None = None) -> list[dict]:
+    path = made_meals_path(session_id, day)
+    if not path.exists():
+        return []
+    meals = _read_json(path).get("meals")
+    if not isinstance(meals, list) or any(not isinstance(meal, dict) for meal in meals):
+        raise ValueError("Invalid saved meal history.")
+    return meals
 
 
 def _save_json(path: Path, value: dict) -> None:
@@ -295,14 +332,14 @@ def _meal_context(session_id: str | None = None) -> dict:
 # MEAL VALIDATION
 # ============================================================
 
-def _validate_meals(response: dict) -> None:
+def _validate_meals(response: dict, *, allow_empty: bool = False) -> None:
     """Validate generated meal structure and nutrition."""
     if not isinstance(response, dict):
         raise ValueError("Gemini must return a JSON object.")
 
     meals = response.get("meals")
-    if not isinstance(meals, list) or not meals:
-        raise ValueError("The response must contain at least one meal.")
+    if not isinstance(meals, list) or len(meals) > 1 or (not meals and not allow_empty):
+        raise ValueError("The response must contain exactly one meal.")
 
     if not isinstance(response.get("notes"), str):
         raise ValueError("The response must contain notes.")
@@ -370,68 +407,6 @@ def _validate_meals(response: dict) -> None:
 
 
 # ============================================================
-# INGREDIENT AVAILABILITY
-# ============================================================
-
-def get_ingredient_availability(
-    meal: dict,
-    inventory_items: list[dict],
-) -> dict:
-    """Compare recipe quantities with available inventory."""
-    ingredient_details = []
-    all_available = True
-
-    for ingredient in meal["ingredients"]:
-        name = ingredient["name"]
-        required = ingredient["quantity_g"]
-
-        item = next(
-            (
-                row for row in inventory_items
-                if row["name"].casefold() == name.casefold()
-            ),
-            None,
-        )
-
-        available = item["quantity_g"] if item is not None else 0
-        missing = max(0, required - available)
-
-        if missing > 0:
-            all_available = False
-
-        ingredient_details.append({
-            "name": name,
-            "required_g": required,
-            "available_g": available,
-            "missing_g": missing,
-        })
-
-    return {
-        "available": all_available,
-        "ingredients": ingredient_details,
-    }
-
-
-def _attach_availability(
-    meals: list[dict],
-    inventory_items: list[dict],
-) -> list[dict]:
-    """Attach calculated inventory availability to every meal."""
-    result = []
-
-    for meal in meals:
-        result.append({
-            **meal,
-            "ingredient_availability": get_ingredient_availability(
-                meal,
-                inventory_items,
-            ),
-        })
-
-    return result
-
-
-# ============================================================
 # GEMINI INTEGRATION
 # ============================================================
 
@@ -484,7 +459,7 @@ def _request_meals(
             "Gemini returned invalid meal suggestion JSON."
         ) from exc
 
-    _validate_meals(result)
+    _validate_meals(result, allow_empty=True)
     return result
 
 
@@ -492,223 +467,134 @@ def _request_meals(
 # SAVE GENERATED MEALS
 # ============================================================
 
-def _save_meals(
-    response: dict,
-    session_id: str | None = None,
-) -> dict:
-    """Save meal suggestions with stable IDs and availability."""
+def _check_inventory(meal: dict, rows: list[dict]) -> None:
+    """Check the whole recipe, aggregating repeated ingredient names."""
+    required = {}
+    for ingredient in meal["ingredients"]:
+        key = ingredient["name"].casefold()
+        required[key] = required.get(key, 0) + ingredient["quantity_g"]
+    stock = {row["name"].casefold(): row["quantity_g"] for row in rows}
+    for name, amount in required.items():
+        remaining = stock.get(name, 0) - amount
+        if remaining < -1e-6 or name not in stock:
+            raise InsufficientInventoryError(
+                "Your inventory does not have enough ingredients for this meal. "
+                "Add groceries or try another meal type."
+            )
+        if 1e-6 < remaining < 1:
+            raise InsufficientInventoryError(
+                "This recipe would leave less than 1 g of an ingredient. "
+                "Try generating another meal or adjust your inventory."
+            )
+
+
+def _save_meals(response: dict, session_id: str | None = None) -> dict:
     session_id = _require_session_id(session_id)
-
-    inventory_items = inventory.get_inventory(session_id=session_id)
-
-    # Give each generated meal an ID before saving it.
-    # The ID is preserved when the meal is selected and made.
-    meals_with_ids = []
-
-    for meal in response["meals"]:
-        meal_with_id = dict(meal)
-        meal_with_id.setdefault("meal_id", str(uuid4()))
-        meals_with_ids.append(meal_with_id)
-
-    meals = _attach_availability(meals_with_ids, inventory_items)
-
-    result = {
-        "meals": meals,
-        "notes": response["notes"],
-    }
-
+    _validate_meals(response)
+    rows = inventory.get_inventory(session_id=session_id)
+    meal = {**response["meals"][0], "meal_id": str(uuid4()), "made": False}
+    _check_inventory(meal, rows)
+    result = {"meals": [meal], "notes": response["notes"]}
     _save_json(suggestion_path(session_id), result)
     return result
 
 
-# ============================================================
-# GENERATE MEAL SUGGESTIONS
-# ============================================================
-
-def generate_meal_suggestions(
-    number_of_meals: int = 5,
-    *,
-    session_id: str | None = None,
-) -> dict:
-    """Generate personalized meals using preferences and inventory."""
+def generate_meal_suggestions(meal_type: str, *, session_id: str | None = None) -> dict:
+    """Generate one requested meal using only sufficient inventory ingredients."""
     session_id = _require_session_id(session_id)
-
-    if (
-        type(number_of_meals) is not int
-        or not 1 <= number_of_meals <= 10
-    ):
-        raise ValueError("Number of meals must be between 1 and 10.")
-
+    if meal_type not in MEAL_TYPES:
+        raise ValueError("Choose Breakfast, Lunch, Dinner, Dessert, or Snack.")
+    if not inventory.get_inventory(session_id=session_id):
+        raise InsufficientInventoryError(
+            "Your inventory is empty. Add groceries before generating a meal."
+        )
     context = _meal_context(session_id)
-
-    payload = {
-        **context,
-        "number_of_meals": number_of_meals,
-    }
-
-    response = _request_meals(
-        payload,
-        system_prompt=MEAL_GENERATION_PROMPT,
-    )
-
+    response = _request_meals({**context, "meal_type": meal_type, "number_of_meals": 1})
+    _validate_meals(response, allow_empty=True)
+    if not response["meals"]:
+        raise InsufficientInventoryError(
+            "There are not enough suitable ingredients for this meal type. "
+            "Add groceries or choose another meal type."
+        )
+    if response["meals"][0]["meal_type"] != meal_type:
+        raise ValueError("The meal service returned the wrong meal type. Please try again.")
     return _save_meals(response, session_id)
 
 
-# ============================================================
-# SELECT A MEAL
-# ============================================================
+def load_meal_suggestion(session_id: str) -> dict:
+    """Load the single suggestion and refresh its completion from history."""
+    result = _read_json(suggestion_path(_require_session_id(session_id)))
+    _validate_meals(result)
+    meal = result["meals"][0]
+    meal["made"] = False
+    for path in (_session_dir(session_id) / "meals_made").glob("meals_*.json"):
+        if any(row.get("meal_id") == meal.get("meal_id") for row in _read_json(path).get("meals", [])):
+            meal["made"] = True
+            break
+    return result
 
-def select_meal(
-    meal: dict,
-    session_id: str | None = None,
-) -> dict:
-    """Save a selected meal while preserving its generated ID."""
+
+def mark_meal_made(meal_id: str, *, session_id: str) -> dict:
+    """Consume the current recipe once and append it to today's meal history."""
     session_id = _require_session_id(session_id)
-
-    _validate_meals({
-        "meals": [meal],
-        "notes": "",
-    })
-
-    selected = {
-        **meal,
-        "meal_id": meal.get("meal_id") or str(uuid4()),
-        "selected": True,
-        "made": False,
-    }
-
-    path = selected_meals_path(session_id)
-
-    if path.exists():
-        saved_data = _read_json(path)
-        meals = saved_data.get("meals", [])
-
-        if not isinstance(meals, list):
-            raise ValueError(
-                "Saved selected meals must contain a meals list."
-            )
-    else:
-        meals = []
-
-    # Avoid adding the same generated suggestion more than once.
-    existing_index = next(
-        (
-            index for index, saved_meal in enumerate(meals)
-            if isinstance(saved_meal, dict)
-            and saved_meal.get("meal_id") == selected["meal_id"]
-        ),
-        None,
-    )
-
-    if existing_index is None:
-        meals.append(selected)
-    else:
-        # Preserve its made status if the same meal is selected again.
-        selected["made"] = bool(meals[existing_index].get("made", False))
-        meals[existing_index] = selected
-
-    _save_json(path, {"meals": meals})
-    return selected
+    with inventory._LOCK:
+        result = load_meal_suggestion(session_id)
+        meal = result["meals"][0]
+        if not meal_id or meal.get("meal_id") != meal_id:
+            raise ValueError("That meal is no longer the current suggestion. Generate a new meal.")
+        if meal.get("made"):
+            raise ValueError("This meal has already been marked as made.")
+        now = datetime.now().astimezone()
+        path = made_meals_path(session_id, now.date().isoformat())
+        history = get_made_meals(session_id, now.date().isoformat())
+        before = inventory._read()
+        _check_inventory(meal, before["sessions"].get(session_id, []))
+        rows = before["sessions"].get(session_id, [])
+        updated = inventory.consume_many(meal["ingredients"], session_id=session_id)
+        remaining = {row["name"].casefold(): row["quantity_g"] for row in updated}
+        used = []
+        for row in rows:
+            consumed = round(row["quantity_g"] - remaining.get(row["name"].casefold(), 0), 3)
+            if consumed > 0:
+                used.append({**row, "quantity_g": consumed})
+        completed = {**meal, "made": True, "made_at": now.isoformat(), "consumed_ingredients": used}
+        try:
+            _save_json(path, {"date": now.date().isoformat(), "meals": [*history, completed]})
+        except Exception:
+            # A failed history save must not silently consume the ingredients.
+            inventory._save(before)
+            raise
+        # History is the source of completion status, including after reload.
+        return {"meal": completed, "inventory": updated}
 
 
-# ============================================================
-# MARK A MEAL AS MADE
-# ============================================================
-
-def mark_meal_made(
-    meal_id: str,
-    *,
-    session_id: str,
-) -> dict:
-    """Mark a selected meal as made and deduct its ingredients."""
+def unmark_meal_made(meal_id: str, *, session_id: str) -> list[dict]:
+    """Remove one completed meal and restore exactly the quantities consumed."""
     session_id = _require_session_id(session_id)
-
-    if not isinstance(meal_id, str) or not meal_id.strip():
-        raise ValueError("A meal ID is required.")
-
-    path = selected_meals_path(session_id)
-
-    if not path.exists():
-        raise ValueError("No selected meals were found.")
-
-    saved_data = _read_json(path)
-    meals = saved_data.get("meals", [])
-
-    if not isinstance(meals, list):
-        raise ValueError(
-            "Saved selected meals must contain a meals list."
-        )
-
-    selected = next(
-        (
-            meal for meal in meals
-            if isinstance(meal, dict)
-            and meal.get("meal_id") == meal_id
-        ),
-        None,
-    )
-
-    if selected is None:
-        raise ValueError("That selected meal could not be found.")
-
-    if selected.get("made", False):
-        raise ValueError("This meal has already been marked as made.")
-
-    # Validate the recipe before changing inventory.
-    _validate_meals({
-        "meals": [{
-            key: value
-            for key, value in selected.items()
-            if key in MEAL_PROPERTIES
-        }],
-        "notes": "",
-    })
-
-    # Check the remaining amounts before using the existing inventory
-    # function. It requires remaining quantities to be zero or at least 1 g.
-    current_inventory = inventory.get_inventory(session_id=session_id)
-
-    required = {}
-
-    for ingredient in selected["ingredients"]:
-        key = ingredient["name"].casefold()
-        required[key] = required.get(key, 0) + ingredient["quantity_g"]
-
-    for key, amount in required.items():
-        item = next(
-            (
-                row for row in current_inventory
-                if row["name"].casefold() == key
-            ),
-            None,
-        )
-
-        if item is None:
-            raise ValueError(f"{key.title()} is not in your inventory.")
-
-        remaining = item["quantity_g"] - amount
-
-        if remaining < -1e-9:
-            raise ValueError(f"Not enough {item['name']} in inventory.")
-
-        if 1e-9 < remaining < 1:
-            raise ValueError(
-                f"Using this recipe would leave less than 1 g of "
-                f"{item['name']}. Adjust the inventory amount or recipe "
-                f"so the ingredient is fully used or at least 1 g remains."
-            )
-
-    # Deduct all ingredients atomically within the inventory file.
-    updated_inventory = inventory.consume_many(
-        selected["ingredients"],
-        session_id=session_id,
-    )
-
-    # Only mark the meal as made after inventory deduction succeeds.
-    selected["made"] = True
-    _save_json(path, {"meals": meals})
-
-    return {
-        "meal": selected,
-        "inventory": updated_inventory,
-    }
+    with inventory._LOCK:
+        for path in (_session_dir(session_id) / "meals_made").glob("meals_*.json"):
+            record = _read_json(path)
+            meals = record["meals"]
+            meal = next((row for row in meals if row.get("meal_id") == meal_id), None)
+            if meal is None:
+                continue
+            before = inventory._read()
+            # Work on a separate copy so rollback retains the original stock.
+            restored = json.loads(json.dumps(before))
+            rows = restored["sessions"].setdefault(session_id, [])
+            for ingredient in meal["consumed_ingredients"]:
+                row = next((row for row in rows if row["name"].casefold() == ingredient["name"].casefold()), None)
+                if row is None:
+                    row = {**ingredient, "quantity_g": 0}
+                    rows.append(row)
+                row["quantity_g"] = inventory._quantity(row["quantity_g"] + ingredient["quantity_g"])
+                if row["quantity_g"] < 1:
+                    raise ValueError("Restoring this ingredient would leave less than 1 g.")
+            inventory._save(restored)
+            try:
+                _save_json(path, {**record, "meals": [row for row in meals if row.get("meal_id") != meal_id]})
+            except Exception:
+                inventory._save(before)
+                raise
+            return rows
+    raise ValueError("This meal is not marked as made.")

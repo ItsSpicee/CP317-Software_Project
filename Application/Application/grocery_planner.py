@@ -11,6 +11,7 @@ they are not checked against a food database.
 import json
 import math
 import os
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -300,8 +301,13 @@ def suggestion_path(session_id: str | None = None) -> Path:
 
 
 def inventory_path(session_id: str | None = None) -> Path:
-    """Record of the last grocery plan added to inventory."""
+    """Legacy record of the last grocery plan added to inventory."""
     return _session_dir(session_id) / "weekly_grocery_inventory.json"
+
+
+def purchase_folder(session_id: str | None = None) -> Path:
+    """Dated purchase records belonging to this browser session."""
+    return _session_dir(session_id) / "purchases"
 
 
 def _save_json(path: Path, value: dict) -> None:
@@ -376,11 +382,16 @@ def is_purchased(suggestion: dict, session_id: str | None = None) -> bool:
     plan_id = suggestion.get("plan_id")
     if not plan_id:
         return False
-    try:
-        saved = _read_json(inventory_path(session_id))
-    except (OSError, ValueError):
-        return False
-    return saved.get("plan_id") == plan_id
+    records = [inventory_path(session_id)]
+    records.extend(purchase_folder(session_id).glob("grocery_purchase_*.json"))
+    for path in records:
+        try:
+            saved = _read_json(path)
+        except (OSError, ValueError):
+            continue
+        if saved.get("plan_id") == plan_id:
+            return True
+    return False
 
 
 def record_purchase(suggestion: dict, session_id: str | None = None) -> list[dict]:
@@ -397,6 +408,10 @@ def record_purchase(suggestion: dict, session_id: str | None = None) -> list[dic
     with inventory._LOCK:
         if is_purchased(suggestion, session_id):
             raise ValueError("This grocery list is already in your inventory.")
+        before = inventory._read()
+        purchased_at = datetime.now().astimezone()
+        filename = f"grocery_purchase_{purchased_at:%Y-%m-%d_%H%M%S}_{uuid4().hex}.json"
+        path = purchase_folder(session_id) / filename
         stock = inventory.add_many(
             [
                 {"name": item["name"], "quantity_g": item["quantity_g"], "grocery_type": item["grocery_type"]}
@@ -404,7 +419,12 @@ def record_purchase(suggestion: dict, session_id: str | None = None) -> list[dic
             ],
             session_id=session_id,
         )
-        _save_json(inventory_path(session_id), suggestion)
+        try:
+            _save_json(path, {**suggestion, "purchased_at": purchased_at.isoformat()})
+        except Exception:
+            # Restore stock under the same lock so a retry cannot add it twice.
+            inventory._save(before)
+            raise
     return stock
 
 
@@ -415,5 +435,7 @@ def invalidate_weekly_plan() -> None:
     sessions = USER_DATA_FOLDER / "sessions"
     if not sessions.is_dir():
         return
-    for path in sessions.rglob("*.json"):
-        path.unlink(missing_ok=True)
+    # Changing preferences invalidates plans, but preserves purchase history.
+    for filename in ("weekly_suggestion.json", "weekly_grocery_inventory.json", "meal_suggestions.json", "selected_meals.json"):
+        for path in sessions.glob(f"*/{filename}"):
+            path.unlink(missing_ok=True)

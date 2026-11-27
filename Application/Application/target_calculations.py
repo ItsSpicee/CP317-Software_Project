@@ -53,6 +53,11 @@ def _detail_line(personalization: dict) -> str:
 
 
 def _get_target_values() -> dict[str, str | float]:
+    """Shared target snapshot for the Targets page and Overview.
+
+    Missing or skipped setup fields use the nutrition module's defaults;
+    numeric targets remain unrounded for intake and remaining calculations.
+    """
     user_data = nutrition._load_json(nutrition.USER_DATA_FOLDER / "user_data.json")
     personalization = nutrition._load_json(
         nutrition.USER_DATA_FOLDER / "user_personalization_data.json"

@@ -1465,7 +1465,7 @@ button.ns-btn:focus-visible,
 
 .ns-calorie-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem 1.5rem;
 }
 
@@ -1797,6 +1797,59 @@ button.ns-btn:focus-visible,
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.ns-made-meals {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.ns-grocery-categories {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.ns-grocery-category {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.ns-grocery-category svg {
+  flex-shrink: 0;
+}
+
+.ns-grocery-category strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.ns-category-meat {
+  color: #874735;
+  background: #f2e5df;
+}
+
+.ns-category-dairy {
+  color: #3d6378;
+  background: #e5edf2;
+}
+
+.ns-category-produce {
+  color: #3d633e;
+  background: #e6eddf;
+}
+
+.ns-category-dry_goods {
+  color: #795c2c;
+  background: #f1e9d8;
 }
 
 .ns-grocery-item {
@@ -2240,14 +2293,24 @@ button.ns-btn[disabled] {
 .ns-overview-chip { border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem; font-size: .85rem; color: var(--ink); background: var(--sheet); }
 .ns-overview-hero { margin-top: 1.75rem; }
 .ns-overview-hero .ns-overview-calories { font-size: 3.4rem; }
-.ns-overview-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
-.ns-overview-meals { list-style: none; padding: 0; margin: 0 0 1.5rem; }
-.ns-overview-meals li { padding: .45rem 0; border-bottom: 1px solid var(--line); }
+.ns-overview-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 1.5rem; margin-top: 1.5rem; }
+.ns-overview-meal-card { display: flex; flex-direction: column; min-height: 0; }
+.ns-overview-meal-card > a { align-self: flex-start; margin-top: auto; }
+.ns-overview-meals { list-style: none; padding: 0 .35rem 0 0; margin: 0 0 1.5rem; height: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.ns-overview-meals li { display: flex; align-items: center; gap: .65rem; padding: .65rem 0; border-bottom: 1px solid var(--line); }
+.ns-overview-meals li svg { flex-shrink: 0; }
+.ns-overview-meals svg.ns-p { color: var(--protein); background: transparent; }
+.ns-overview-meals svg.ns-c { color: var(--carbs); background: transparent; }
+.ns-overview-meals svg.ns-f { color: var(--fat); background: transparent; }
+.ns-overview-meals li span { overflow-wrap: anywhere; }
 @media (max-width: 900px) {
   .ns-overview-actions { grid-template-columns: 1fr; }
+  .ns-overview-meals { height: auto; flex: none; max-height: 14rem; }
 }
 .ns-tracking-preview { max-width: 720px; margin: 1.5rem 0; }
 .ns-tracking-preview img { display: block; border-radius: 10px; }
+.ns-overview-progress { margin-top: 1.5rem; }
+.ns-overview-progress .ns-tracking-preview { max-width: none; margin-bottom: 0; }
 
 /* Manual inventory */
 .ns-inventory-grid { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.4fr); gap: 1.5rem; margin-top: 2rem; align-items: start; }

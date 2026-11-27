@@ -1,0 +1,187 @@
+{
+    "plan_id": "37fccd40762a44cc859c6901b36d7064",
+    "items": [
+        {
+            "name": "Salmon Fillet",
+            "grocery_type": "meat",
+            "quantity_g": 2000.0,
+            "preparation": "raw",
+            "calories": 4160.0,
+            "protein": 400.0,
+            "carbs": 0.0,
+            "fat": 260.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Sweet Potatoes",
+            "grocery_type": "produce",
+            "quantity_g": 3500.0,
+            "preparation": "raw",
+            "calories": 2975.0,
+            "protein": 56.0,
+            "carbs": 686.0,
+            "fat": 35.0,
+            "fiber": 105.0
+        },
+        {
+            "name": "Spinach",
+            "grocery_type": "produce",
+            "quantity_g": 2000.0,
+            "preparation": "raw",
+            "calories": 460.0,
+            "protein": 57.0,
+            "carbs": 72.0,
+            "fat": 8.0,
+            "fiber": 44.0
+        },
+        {
+            "name": "Olive Oil",
+            "grocery_type": "dry_goods",
+            "quantity_g": 500.0,
+            "preparation": "raw",
+            "calories": 4415.0,
+            "protein": 0.0,
+            "carbs": 0.0,
+            "fat": 500.0,
+            "fiber": 0.0
+        }
+    ],
+    "inventory_used": [
+        {
+            "name": "Chicken Breast",
+            "grocery_type": "meat",
+            "quantity_g": 3100.0,
+            "preparation": "From your inventory",
+            "calories": 5115.0,
+            "protein": 961.0,
+            "carbs": 0.0,
+            "fat": 111.6,
+            "fiber": 0.0
+        },
+        {
+            "name": "Brown Rice",
+            "grocery_type": "dry_goods",
+            "quantity_g": 1700.0,
+            "preparation": "From your inventory",
+            "calories": 6222.0,
+            "protein": 132.6,
+            "carbs": 1292.0,
+            "fat": 49.3,
+            "fiber": 61.2
+        },
+        {
+            "name": "Whole Milk",
+            "grocery_type": "dairy",
+            "quantity_g": 4000.0,
+            "preparation": "From your inventory",
+            "calories": 2440.0,
+            "protein": 128.0,
+            "carbs": 192.0,
+            "fat": 140.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Rolled Oats",
+            "grocery_type": "dry_goods",
+            "quantity_g": 1200.0,
+            "preparation": "From your inventory",
+            "calories": 4608.0,
+            "protein": 154.8,
+            "carbs": 792.0,
+            "fat": 84.0,
+            "fiber": 124.8
+        },
+        {
+            "name": "Eggs",
+            "grocery_type": "meat",
+            "quantity_g": 1500.0,
+            "preparation": "From your inventory",
+            "calories": 2160.0,
+            "protein": 192.0,
+            "carbs": 10.5,
+            "fat": 156.0,
+            "fiber": 0.0
+        },
+        {
+            "name": "Broccoli",
+            "grocery_type": "produce",
+            "quantity_g": 2000.0,
+            "preparation": "From your inventory",
+            "calories": 680.0,
+            "protein": 56.0,
+            "carbs": 140.0,
+            "fat": 7.4,
+            "fiber": 52.0
+        },
+        {
+            "name": "Peanut Butter",
+            "grocery_type": "dry_goods",
+            "quantity_g": 600.0,
+            "preparation": "From your inventory",
+            "calories": 3534.0,
+            "protein": 144.0,
+            "carbs": 120.0,
+            "fat": 300.0,
+            "fiber": 36.0
+        }
+    ],
+    "estimated_weekly_totals": {
+        "calories": 36769.0,
+        "protein": 2281.4,
+        "carbs": 3304.5,
+        "fat": 1651.3,
+        "fiber": 423.0
+    },
+    "purchase_totals": {
+        "calories": 12010.0,
+        "protein": 513.0,
+        "carbs": 758.0,
+        "fat": 803.0,
+        "fiber": 149.0
+    },
+    "inventory_totals": {
+        "calories": 24759.0,
+        "protein": 1768.4,
+        "carbs": 2546.5,
+        "fat": 848.3,
+        "fiber": 274.0
+    },
+    "inventory_snapshot": [
+        [
+            "broccoli",
+            2200.0,
+            "produce"
+        ],
+        [
+            "brown rice",
+            1700.0,
+            "dry_goods"
+        ],
+        [
+            "chicken breast",
+            3100.0,
+            "meat"
+        ],
+        [
+            "eggs",
+            2000.0,
+            "meat"
+        ],
+        [
+            "peanut butter",
+            800.0,
+            "dry_goods"
+        ],
+        [
+            "rolled oats",
+            1500.0,
+            "dry_goods"
+        ],
+        [
+            "whole milk",
+            5000.0,
+            "dairy"
+        ]
+    ],
+    "notes": "Assumed standard nutritional profiles for all inventory and purchased items to match weekly high-calorie targets. Utilized a major portion of the provided inventory and supplemented with salmon, sweet potatoes, spinach, and olive oil to balance macros."
+}

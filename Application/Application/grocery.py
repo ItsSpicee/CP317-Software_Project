@@ -1,7 +1,7 @@
 """Weekly grocery planner UI wired to grocery_planner.py.
 
-Plans count what is already in the session inventory, so the page shows
-two lists: what to buy and what comes from your inventory.
+List only groceries to buy, with weekly nutrition totals that account
+for the existing inventory included in the plan.
 """
 
 from __future__ import annotations
@@ -174,15 +174,13 @@ class GroceryState(rx.State):
     selected_types: list[str] = []
     items: list[GroceryItem] = []
     display_items: list[GroceryItem] = []
-    pantry_items: list[GroceryItem] = []
-    display_pantry: list[GroceryItem] = []
-    has_pantry: bool = False
+    had_inventory: bool = False
     nothing_to_buy: bool = False
     inventory_stale: bool = False
     inventory_count: int = 0
-    split_line: str = ""
     calories_total: str = "0"
-    calories_daily: str = "0"
+    calories_additions: str = "0"
+    calories_existing: str = "0"
     protein_total: str = "0 g"
     protein_day: str = "0 g"
     carbs_total: str = "0 g"
@@ -207,38 +205,29 @@ class GroceryState(rx.State):
             return not self.selected_types or item.grocery_type in self.selected_types
 
         self.display_items = _sorted_items([i for i in self.items if keep(i)], self.sort_by)
-        self.display_pantry = _sorted_items([i for i in self.pantry_items if keep(i)], self.sort_by)
 
     def _apply_suggestion(self, suggestion: dict) -> None:
         to_buy = suggestion["items"]
         used = suggestion.get("inventory_used", [])
         self.items = [_format_item(item, order_index=index) for index, item in enumerate(to_buy)]
-        self.pantry_items = [_format_item(item, order_index=index) for index, item in enumerate(used)]
         self._refresh_display()
-        self.has_pantry = bool(used)
+        # Use the plan's starting stock, not today's inventory (which may
+        # already include purchases). Older plans may not have a snapshot.
+        self.had_inventory = bool(suggestion.get("inventory_snapshot", used))
         self.nothing_to_buy = not to_buy
         self.notes = str(suggestion.get("notes", "")).strip()
 
         totals = suggestion["estimated_weekly_totals"]
         weekly = float(totals["calories"])
         self.calories_total = f"{weekly:,.0f}"
-        self.calories_daily = f"{weekly / 7:,.0f}"
+        self.calories_additions = f'{sum(float(item["calories"]) for item in to_buy):,.0f}'
+        self.calories_existing = f'{sum(float(item["calories"]) for item in used):,.0f}'
         for name in ("protein", "carbs", "fat", "fiber"):
             grams = float(totals[name])
             setattr(self, f"{name}_total", f"{grams:.0f} g")
             setattr(self, f"{name}_day", f"{grams / 7:.0f} g")
 
-        count = _count(len(to_buy), "item", "items") + " to buy"
-        if used:
-            count += f" · {len(used)} from your inventory"
-        self.item_count = count
-
-        if used:
-            buy_kcal = sum(float(item["calories"]) for item in to_buy)
-            have_kcal = sum(float(item["calories"]) for item in used)
-            self.split_line = f"{have_kcal:,.0f} kcal from your inventory · {buy_kcal:,.0f} kcal to buy"
-        else:
-            self.split_line = ""
+        self.item_count = _count(len(to_buy), "item", "items") + " to buy"
         self.has_plan = True
 
     def _clear_plan(self) -> None:
@@ -248,15 +237,13 @@ class GroceryState(rx.State):
         self.notes = ""
         self.items = []
         self.display_items = []
-        self.pantry_items = []
-        self.display_pantry = []
-        self.has_pantry = False
+        self.had_inventory = False
         self.nothing_to_buy = False
-        self.split_line = ""
         self.sort_by = "Default order"
         self.selected_types = []
         self.calories_total = "0"
-        self.calories_daily = "0"
+        self.calories_additions = "0"
+        self.calories_existing = "0"
         for name in ("protein", "carbs", "fat", "fiber"):
             setattr(self, f"{name}_total", "0 g")
             setattr(self, f"{name}_day", "0 g")
@@ -476,10 +463,6 @@ def grocery_row(item: GroceryItem) -> rx.Component:
     return _row(item, "shopping-basket")
 
 
-def pantry_row(item: GroceryItem) -> rx.Component:
-    return _row(item, "package")
-
-
 def section_head(icon: str, title: str) -> rx.Component:
     return rx.el.div(
         rx.icon(icon, size=15, class_name="ns-section-icon"),
@@ -578,19 +561,20 @@ def plan_view() -> rx.Component:
     return rx.el.div(
         stale_notice(),
         rx.el.div(
-            rx.el.div(
-                calorie_stat("calendar-days", GroceryState.calories_total, "Per week"),
-                calorie_stat("flame", GroceryState.calories_daily, "Per day"),
-                class_name="ns-calorie-grid",
+            rx.cond(
+                GroceryState.had_inventory,
+                rx.el.div(
+                    calorie_stat("shopping-basket", GroceryState.calories_additions, "New additions · week"),
+                    calorie_stat("package", GroceryState.calories_existing, "Existing inventory · week"),
+                    calorie_stat("calendar-days", GroceryState.calories_total, "Combined · week"),
+                    class_name="ns-calorie-grid",
+                ),
+                calorie_stat("calendar-days", GroceryState.calories_total, "Weekly total"),
             ),
             rx.el.div(
                 rx.icon("package", size=16, class_name="ns-meta-icon"),
                 rx.el.span(GroceryState.item_count),
                 class_name="ns-meta ns-meta-row",
-            ),
-            rx.cond(
-                GroceryState.split_line != "",
-                rx.el.p(GroceryState.split_line, class_name="ns-hint"),
             ),
             rx.cond(
                 GroceryState.purchased,
@@ -605,7 +589,14 @@ def plan_view() -> rx.Component:
             total_cell("Fiber", GroceryState.fiber_total, GroceryState.fiber_day, "leaf", "ns-fiber"),
             class_name="ns-totals",
         ),
-        rx.el.p("Totals include food from your inventory and food to buy.", class_name="ns-hint"),
+        rx.el.p(
+            rx.cond(
+                GroceryState.had_inventory,
+                "Existing inventory totals count the amounts included in this plan. Macros combine existing inventory and new additions.",
+                "Nutrition totals cover the groceries listed below.",
+            ),
+            class_name="ns-hint",
+        ),
         rx.el.div(
             rx.el.div(
                 section_head("shopping-basket", "To buy"),
@@ -663,22 +654,6 @@ def plan_view() -> rx.Component:
                 ),
             ),
             class_name="ns-list-block",
-        ),
-        rx.cond(
-            GroceryState.has_pantry,
-            rx.el.div(
-                section_head("package", "From your inventory"),
-                rx.el.p("Food you already have that this plan counts toward your targets.", class_name="ns-hint"),
-                rx.el.ul(
-                    rx.foreach(GroceryState.display_pantry, pantry_row),
-                    class_name="ns-grocery-list",
-                ),
-                rx.cond(
-                    GroceryState.display_pantry.length() == 0,
-                    rx.el.p("No inventory items match the selected types.", class_name="ns-grocery-prep"),
-                ),
-                class_name="ns-list-block",
-            ),
         ),
         rx.cond(
             GroceryState.notes != "",

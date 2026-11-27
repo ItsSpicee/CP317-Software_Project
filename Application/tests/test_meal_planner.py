@@ -1,761 +1,235 @@
-"""Unit tests for the Gemini meal suggestion backend."""
+"""Single-meal generation, inventory enforcement, and reversible daily history."""
 
-import json
+import copy
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-APP_ROOT = Path(__file__).resolve().parents[1]
-if str(APP_ROOT) not in sys.path:
-    sys.path.insert(0, str(APP_ROOT))
-
-from google.genai import types
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from Application import inventory
 from Application import meal_planner as mp
-
-
-def make_response(text, finish_reason=types.FinishReason.STOP):
-    response = MagicMock()
-    response.candidates = [MagicMock(finish_reason=finish_reason)]
-    response.text = text
-    return response
-
-
-def make_client(mock_client, response):
-    client = MagicMock()
-    client.__enter__.return_value = client
-    client.models.generate_content.return_value = response
-    mock_client.return_value = client
-    return client
+from google.genai import types
 
 
 class TestMealPlanner(unittest.TestCase):
-
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.data_folder = Path(self.temp_dir.name)
-
-        self.folder_patcher = patch.object(
-            mp, "USER_DATA_FOLDER", self.data_folder
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        for target, field, value in (
+            (mp, "USER_DATA_FOLDER", self.root),
+            (inventory, "INVENTORY_FILE", self.root / "inventory.json"),
+        ):
+            patcher = patch.object(target, field, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.meal = dict(
+            name="Rice bowl", description="Warm rice", meal_type="Lunch", servings=1,
+            ingredients=[{"name": "Rice", "quantity_g": 100}],
+            instructions=["Cook rice."], calories=350, protein=7, carbs=80, fat=1, fiber=2,
         )
-        self.folder_patcher.start()
-
-        # Same format onboarding.py saves to user_data.json.
-        self.profile = {
-            "sex": "Female",
-            "activity_level": "Medium",
-            "height": 170.0,
-            "weight": 65.0,
-            "age": 25.0
-        }
-
-        # Same format personalize.py saves to user_personalization_data.json.
-        self.preferences = {
-            "calories": "",
-            "current_goal": "Weight Loss",
-            "muscle_gain": True,
-            "allergies": ["Peanuts"],
-            "diet_types": ["Vegetarian"],
-            "fiber": 30.0
-        }
-
-        self.targets = {
-            "calories": 2000,
-            "protein": 100,
-            "carbs": 250,
-            "fat": 65,
-            "fiber": 30
-        }
-
-        self.write_json(
-            self.data_folder / "user_data.json",
-            self.profile
-        )
-
-        self.write_json(
-            self.data_folder / "user_personalization_data.json",
-            self.preferences
-        )
-
-        self.meal = {
-            "name": "Chicken Rice Bowl",
-            "description": "Grilled chicken with brown rice and vegetables.",
-            "meal_type": "Lunch",
-            "servings": 1,
-            "ingredients": ["150 g chicken breast", "100 g brown rice"],
-            "instructions": ["Grill the chicken.", "Cook the rice."],
-            "calories": 550,
-            "protein": 45,
-            "carbs": 60,
-            "fat": 12,
-            "fiber": 6
-        }
-
-        self.valid_response = {
-            "meals": [self.meal],
-            "notes": "Fiber comes mostly from the rice and vegetables."
-        }
-
-    def tearDown(self):
-        self.folder_patcher.stop()
-        self.temp_dir.cleanup()
-
-    def write_json(self, path, data):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data), encoding="utf-8")
-
-    def response_with(self, **changes):
-        """Copy of the valid response with one meal field changed."""
-        response = json.loads(json.dumps(self.valid_response))
-        response["meals"][0].update(changes)
-        return response
-
-    # -------------------------
-    # JSON READING TESTS
-    # -------------------------
-
-    def test_read_json_returns_dictionary(self):
-        path = self.data_folder / "test.json"
-        self.write_json(path, {"name": "Test"})
-
-        self.assertEqual(mp._read_json(path), {"name": "Test"})
-
-    def test_read_json_rejects_non_dictionary(self):
-        path = self.data_folder / "test.json"
-        self.write_json(path, ["item1", "item2"])
-
-        with self.assertRaises(ValueError):
-            mp._read_json(path)
-
-    def test_read_json_rejects_corrupted_file(self):
-        path = self.data_folder / "test.json"
-        path.write_text("{not json", encoding="utf-8")
-
-        with self.assertRaises(json.JSONDecodeError):
-            mp._read_json(path)
-
-    # -------------------------
-    # MEAL CONTEXT TESTS
-    # -------------------------
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_returns_correct_data(self, mock_targets):
-        mock_targets.return_value = self.targets
-
-        result = mp._meal_context()
-
-        self.assertEqual(result["daily_targets"], self.targets)
-        self.assertEqual(result["goal"], "Weight Loss")
-        self.assertTrue(result["muscle_gain"])
-        self.assertEqual(result["allergies"], ["Peanuts"])
-        self.assertEqual(result["diet_types"], ["Vegetarian"])
-        mock_targets.assert_called_once_with(self.profile, self.preferences)
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_keeps_only_nutrient_targets(self, mock_targets):
-        mock_targets.return_value = {
-            **self.targets,
-            "goal_description": "Extra field"
-        }
-
-        result = mp._meal_context()
-
-        self.assertEqual(
-            set(result["daily_targets"]),
-            set(mp.NUTRIENTS)
-        )
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_uses_defaults_for_missing_preferences(
-        self, mock_targets
-    ):
-        mock_targets.return_value = self.targets
-        self.write_json(
-            self.data_folder / "user_personalization_data.json",
-            {}
-        )
-
-        result = mp._meal_context()
-
-        self.assertEqual(result["goal"], "Maintenance")
-        self.assertFalse(result["muscle_gain"])
-        self.assertEqual(result["allergies"], [])
-        self.assertEqual(result["diet_types"], [])
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_rejects_invalid_allergies(self, mock_targets):
-        self.preferences["allergies"] = ["Peanuts", "  "]
-        self.write_json(
-            self.data_folder / "user_personalization_data.json",
-            self.preferences
-        )
-
-        with self.assertRaises(ValueError):
-            mp._meal_context()
-
-        mock_targets.assert_not_called()
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_rejects_invalid_diet_types(self, mock_targets):
-        self.preferences["diet_types"] = "Vegetarian"
-        self.write_json(
-            self.data_folder / "user_personalization_data.json",
-            self.preferences
-        )
-
-        with self.assertRaises(ValueError):
-            mp._meal_context()
-
-        mock_targets.assert_not_called()
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_rejects_non_string_allergy(self, mock_targets):
-        self.preferences["allergies"] = ["Peanuts", 5]
-        self.write_json(
-            self.data_folder / "user_personalization_data.json",
-            self.preferences
-        )
-
-        with self.assertRaises(ValueError):
-            mp._meal_context()
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_requires_positive_calories(self, mock_targets):
-        invalid_targets = self.targets.copy()
-        invalid_targets["calories"] = 0
-        mock_targets.return_value = invalid_targets
-
-        with self.assertRaises(ValueError):
-            mp._meal_context()
-
-    @patch.object(mp, "get_targets")
-    def test_meal_context_requires_profile_file(self, mock_targets):
-        (self.data_folder / "user_data.json").unlink()
-
-        with self.assertRaises(FileNotFoundError):
-            mp._meal_context()
-
-        mock_targets.assert_not_called()
-
-    # -------------------------
-    # MEAL VALIDATION TESTS
-    # -------------------------
-
-    def test_validate_meals_accepts_valid_response(self):
-        mp._validate_meals(self.valid_response)
-
-    def test_validate_meals_accepts_every_meal_type(self):
-        for meal_type in ("Breakfast", "Lunch", "Dinner", "Snack", "Dessert"):
-            with self.subTest(meal_type=meal_type):
-                mp._validate_meals(self.response_with(meal_type=meal_type))
-
-    def test_validate_meals_accepts_decimal_nutrients(self):
-        mp._validate_meals(self.response_with(protein=45.5))
-
-    def test_validate_meals_rejects_non_dictionary(self):
-        with self.assertRaises(ValueError):
-            mp._validate_meals(["not", "a", "dictionary"])
-
-    def test_validate_meals_rejects_missing_meals(self):
-        with self.assertRaises(ValueError):
-            mp._validate_meals({"notes": "No meals"})
-
-    def test_validate_meals_rejects_empty_meals(self):
-        with self.assertRaises(ValueError):
-            mp._validate_meals({"meals": [], "notes": "No meals"})
-
-    def test_validate_meals_rejects_missing_notes(self):
-        response = self.valid_response.copy()
-        response.pop("notes")
-
-        with self.assertRaises(ValueError):
-            mp._validate_meals(response)
-
-    def test_validate_meals_rejects_non_dictionary_meal(self):
-        with self.assertRaises(ValueError):
-            mp._validate_meals({"meals": ["Chicken"], "notes": ""})
-
-    def test_validate_meals_rejects_invalid_text_fields(self):
-        for field in ("name", "description", "meal_type"):
-            for value in ("", "   ", None, 5):
-                with self.subTest(field=field, value=value):
-                    with self.assertRaises(ValueError):
-                        mp._validate_meals(self.response_with(**{field: value}))
-
-    def test_validate_meals_rejects_invalid_meal_type(self):
-        for meal_type in ("Brunch", "lunch"):
-            with self.subTest(meal_type=meal_type):
-                with self.assertRaises(ValueError):
-                    mp._validate_meals(self.response_with(meal_type=meal_type))
-
-    def test_validate_meals_rejects_invalid_servings(self):
-        for servings in (0, -1, 1.5, "2", True, None):
-            with self.subTest(servings=servings):
-                with self.assertRaises(ValueError):
-                    mp._validate_meals(self.response_with(servings=servings))
-
-    def test_validate_meals_rejects_invalid_ingredients(self):
-        for value in ([], ["Rice", ""], ["Rice", 5], "Rice"):
-            with self.subTest(value=value):
-                with self.assertRaises(ValueError):
-                    mp._validate_meals(self.response_with(ingredients=value))
-
-    def test_validate_meals_rejects_invalid_instructions(self):
-        for value in ([], ["Cook", "  "], None):
-            with self.subTest(value=value):
-                with self.assertRaises(ValueError):
-                    mp._validate_meals(self.response_with(instructions=value))
-
-    def test_validate_meals_rejects_negative_nutrients(self):
-        for nutrient in mp.NUTRIENTS:
-            with self.subTest(nutrient=nutrient):
-                with self.assertRaises(ValueError):
-                    mp._validate_meals(self.response_with(**{nutrient: -1}))
-
-    def test_validate_meals_accepts_zero_nutrients(self):
-        mp._validate_meals(self.response_with(fiber=0))
-
-    def test_validate_meals_rejects_non_numeric_nutrients(self):
-        for value in (True, "500", None, float("nan"), float("inf")):
-            with self.subTest(value=value):
-                with self.assertRaises(ValueError):
-                    mp._validate_meals(self.response_with(calories=value))
-
-    # -------------------------
-    # SESSION AND PATH TESTS
-    # -------------------------
-
-    def test_suggestion_path_uses_default_folder(self):
-        self.assertEqual(
-            mp.suggestion_path(),
-            self.data_folder / "meal_suggestions.json"
-        )
-
-    def test_selected_meals_path_uses_default_folder(self):
-        self.assertEqual(
-            mp.selected_meals_path(),
-            self.data_folder / "selected_meals.json"
-        )
-
-    def test_session_paths_are_separate(self):
-        first_path = mp.suggestion_path("session1")
-        second_path = mp.suggestion_path("session2")
-
-        self.assertNotEqual(first_path, second_path)
-        self.assertTrue(first_path.parent.exists())
-        self.assertTrue(second_path.parent.exists())
-
-    def test_session_id_is_sanitized(self):
-        result = mp.suggestion_path("../session/123")
-
-        self.assertEqual(result.parent.name, "session123")
-        self.assertEqual(
-            result.parent.parent,
-            self.data_folder / "sessions"
-        )
-
-    def test_invalid_session_id_is_rejected(self):
-        with self.assertRaises(ValueError):
-            mp.suggestion_path("///")
-
-    # -------------------------
-    # SAVING TESTS
-    # -------------------------
-
-    def test_save_json_leaves_no_temporary_files(self):
-        path = self.data_folder / "output.json"
-
-        mp._save_json(path, {"value": 1})
-
-        self.assertEqual(mp._read_json(path), {"value": 1})
-        self.assertEqual(
-            list(self.data_folder.glob("*.tmp.json")),
-            []
-        )
-
-    def test_save_json_rejects_nan_without_overwriting(self):
-        path = self.data_folder / "output.json"
-        mp._save_json(path, {"value": 1})
-
-        with self.assertRaises(ValueError):
-            mp._save_json(path, {"value": float("nan")})
-
-        self.assertEqual(mp._read_json(path), {"value": 1})
-
-    def test_save_meals_keeps_only_meals_and_notes(self):
-        response = {**self.valid_response, "extra": "ignored"}
-
-        result = mp._save_meals(response)
-
-        self.assertEqual(result, self.valid_response)
-        self.assertEqual(
-            mp._read_json(mp.suggestion_path()),
-            self.valid_response
-        )
-
-    def test_save_meals_uses_session_folder(self):
-        mp._save_meals(self.valid_response, session_id="test_session")
-
-        self.assertTrue(mp.suggestion_path("test_session").exists())
-        self.assertFalse(mp.suggestion_path().exists())
-
-    # -------------------------
-    # SELECT MEAL TESTS
-    # -------------------------
-
-    def test_select_meal_saves_meal(self):
-        result = mp.select_meal(self.meal)
-
-        self.assertTrue(result["selected"])
-        self.assertEqual(result["name"], "Chicken Rice Bowl")
-
-        saved = mp._read_json(mp.selected_meals_path())
-        self.assertEqual(saved, {"meals": [result]})
-
-    def test_select_meal_does_not_change_original_meal(self):
-        mp.select_meal(self.meal)
-
-        self.assertNotIn("selected", self.meal)
-
-    def test_select_meal_appends_to_existing_meals(self):
-        second_meal = {**self.meal, "name": "Oatmeal", "meal_type": "Breakfast"}
-
-        mp.select_meal(self.meal)
-        mp.select_meal(second_meal)
-
-        saved = mp._read_json(mp.selected_meals_path())
-        self.assertEqual(
-            [meal["name"] for meal in saved["meals"]],
-            ["Chicken Rice Bowl", "Oatmeal"]
-        )
-
-    def test_select_meal_rejects_invalid_meal(self):
-        invalid = {**self.meal, "servings": 0}
-
-        with self.assertRaises(ValueError):
-            mp.select_meal(invalid)
-
-        self.assertFalse(mp.selected_meals_path().exists())
-
-    def test_select_meal_rejects_corrupted_saved_meals(self):
-        self.write_json(mp.selected_meals_path(), {"meals": "not a list"})
-
-        with self.assertRaises(ValueError):
-            mp.select_meal(self.meal)
-
-    def test_select_meal_handles_saved_file_without_meals(self):
-        self.write_json(mp.selected_meals_path(), {})
-
-        mp.select_meal(self.meal)
-
-        saved = mp._read_json(mp.selected_meals_path())
+        self.response = {"meals": [self.meal], "notes": "Estimated nutrition."}
+        mp._save_json(self.root / "user_data.json", {})
+        mp._save_json(self.root / "user_personalization_data.json", {})
+
+    def stock(self, amount=500, session="a"):
+        return inventory.add("Rice", amount, "dry_goods", session_id=session)
+
+    def save(self, meal=None, session="a"):
+        return mp._save_meals({"meals": [meal or self.meal], "notes": ""}, session)["meals"][0]
+
+    def make(self, meal=None, session="a"):
+        suggestion = self.save(meal, session)
+        return mp.mark_meal_made(suggestion["meal_id"], session_id=session)["meal"]
+
+    def test_only_one_requested_type_and_single_saved_suggestion(self):
+        self.stock()
+        with patch.object(mp, "_request_meals", return_value=self.response) as request:
+            first = mp.generate_meal_suggestions("Lunch", session_id="a")
+            payload = request.call_args.args[0]
+            self.assertEqual(payload["meal_type"], "Lunch")
+            self.assertEqual(payload["number_of_meals"], 1)
+            self.assertEqual(payload["available_ingredients"][0]["quantity_g"], 500)
+            second = mp.generate_meal_suggestions("Lunch", session_id="a")
+        saved = mp._read_json(mp.suggestion_path("a"))
+        self.assertEqual(saved, second)
         self.assertEqual(len(saved["meals"]), 1)
+        self.assertNotEqual(first["meals"][0]["meal_id"], second["meals"][0]["meal_id"])
+        self.assertEqual(list(mp._session_dir("a").glob("meal_suggestions*.json")), [mp.suggestion_path("a")])
 
-    def test_select_meal_uses_session_folder(self):
-        mp.select_meal(self.meal, session_id="session1")
+    def test_empty_inventory_never_calls_ai(self):
+        with patch.object(mp, "_request_meals") as request:
+            with self.assertRaisesRegex(mp.InsufficientInventoryError, "empty"):
+                mp.generate_meal_suggestions("Lunch", session_id="a")
+            request.assert_not_called()
+        self.assertFalse(mp.suggestion_path("a").exists())
 
-        self.assertTrue(mp.selected_meals_path("session1").exists())
-        self.assertFalse(mp.selected_meals_path().exists())
+    def test_ai_can_report_insufficient_inventory(self):
+        self.stock()
+        with patch.object(mp, "_request_meals", return_value={"meals": [], "notes": "No suitable recipe."}):
+            with self.assertRaises(mp.InsufficientInventoryError):
+                mp.generate_meal_suggestions("Dinner", session_id="a")
+        self.assertFalse(mp.suggestion_path("a").exists())
 
-    # -------------------------
-    # GENERATION TESTS
-    # -------------------------
-
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_generate_meal_suggestions_saves_meals(
-        self, mock_targets, mock_request
-    ):
-        mock_targets.return_value = self.targets
-        mock_request.return_value = self.valid_response
-
-        result = mp.generate_meal_suggestions()
-
-        mock_request.assert_called_once()
-        self.assertEqual(result, self.valid_response)
-        self.assertTrue(mp.suggestion_path().exists())
-
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_generate_meal_suggestions_sends_correct_payload(
-        self, mock_targets, mock_request
-    ):
-        mock_targets.return_value = self.targets
-        mock_request.return_value = self.valid_response
-
-        mp.generate_meal_suggestions(3)
-
-        payload = mock_request.call_args.args[0]
-        self.assertEqual(payload["number_of_meals"], 3)
-        self.assertEqual(payload["daily_targets"], self.targets)
-        self.assertEqual(payload["allergies"], ["Peanuts"])
-        self.assertEqual(
-            mock_request.call_args.kwargs["system_prompt"],
-            mp.MEAL_GENERATION_PROMPT
-        )
-
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_generate_meal_suggestions_defaults_to_five(
-        self, mock_targets, mock_request
-    ):
-        mock_targets.return_value = self.targets
-        mock_request.return_value = self.valid_response
-
-        mp.generate_meal_suggestions()
-
-        payload = mock_request.call_args.args[0]
-        self.assertEqual(payload["number_of_meals"], 5)
-
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_generate_meal_suggestions_accepts_boundaries(
-        self, mock_targets, mock_request
-    ):
-        mock_targets.return_value = self.targets
-        mock_request.return_value = self.valid_response
-
-        for number in (1, 10):
-            with self.subTest(number=number):
-                mp.generate_meal_suggestions(number)
-
-        self.assertEqual(mock_request.call_count, 2)
-
-    @patch.object(mp, "_request_meals")
-    def test_generate_meal_suggestions_rejects_invalid_count(
-        self, mock_request
-    ):
-        for number in (0, 11, -1, 5.0, "5", True, None):
-            with self.subTest(number=number):
+    def test_rejects_wrong_type_and_multiple_meals(self):
+        self.stock()
+        for response in (self.response, {"meals": [self.meal, self.meal], "notes": ""}):
+            with patch.object(mp, "_request_meals", return_value=response):
                 with self.assertRaises(ValueError):
-                    mp.generate_meal_suggestions(number)
+                    mp.generate_meal_suggestions("Dinner", session_id="a")
+        self.assertFalse(mp.suggestion_path("a").exists())
 
-        mock_request.assert_not_called()
+    def test_invalid_type_and_session(self):
+        for kind, session in (("Brunch", "a"), ("Lunch", "")):
+            with self.assertRaises(ValueError):
+                mp.generate_meal_suggestions(kind, session_id=session)
 
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_generate_meal_suggestions_uses_session(
-        self, mock_targets, mock_request
-    ):
-        mock_targets.return_value = self.targets
-        mock_request.return_value = self.valid_response
+    def test_missing_excess_and_repeated_ingredients_are_rejected(self):
+        self.stock(100)
+        for ingredients in (
+            [{"name": "Chicken", "quantity_g": 10}],
+            [{"name": "Rice", "quantity_g": 101}],
+            [{"name": "Rice", "quantity_g": 60}, {"name": "rice", "quantity_g": 60}],
+            [{"name": "Rice", "quantity_g": 99.5}],
+        ):
+            with self.assertRaises(mp.InsufficientInventoryError):
+                self.save({**self.meal, "ingredients": ingredients})
+        self.assertFalse(mp.suggestion_path("a").exists())
 
-        mp.generate_meal_suggestions(session_id="user123")
-
-        self.assertTrue(mp.suggestion_path("user123").exists())
-        self.assertFalse(mp.suggestion_path().exists())
-
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_generate_meal_suggestions_stops_on_invalid_context(
-        self, mock_targets, mock_request
-    ):
-        invalid_targets = self.targets.copy()
-        invalid_targets["calories"] = 0
-        mock_targets.return_value = invalid_targets
-
+    def test_daily_history_appends_and_undo_restores_fully_used_item(self):
+        self.stock(200)
+        first = self.make()
+        second = self.make()
+        path = mp.made_meals_path("a")
+        self.assertEqual(len(list(path.parent.glob("*.json"))), 1)
+        self.assertEqual(len(mp.get_made_meals("a")), 2)
+        self.assertEqual(inventory.get_inventory(session_id="a"), [])
+        mp.unmark_meal_made(first["meal_id"], session_id="a")
+        self.assertEqual(inventory.get_inventory(session_id="a"), [{"name": "Rice", "quantity_g": 100, "grocery_type": "dry_goods"}])
+        self.assertEqual([row["meal_id"] for row in mp.get_made_meals("a")], [second["meal_id"]])
         with self.assertRaises(ValueError):
-            mp.generate_meal_suggestions()
+            mp.unmark_meal_made(first["meal_id"], session_id="a")
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 100)
 
-        mock_request.assert_not_called()
-        self.assertFalse(mp.suggestion_path().exists())
+    def test_duplicate_make_and_reload_and_remake_after_undo(self):
+        self.stock(200)
+        meal = self.make()
+        self.assertTrue(mp.load_meal_suggestion("a")["meals"][0]["made"])
+        with self.assertRaisesRegex(ValueError, "already"):
+            mp.mark_meal_made(meal["meal_id"], session_id="a")
+        mp.unmark_meal_made(meal["meal_id"], session_id="a")
+        self.assertFalse(mp.load_meal_suggestion("a")["meals"][0]["made"])
+        mp.mark_meal_made(meal["meal_id"], session_id="a")
+        self.assertEqual(len(mp.get_made_meals("a")), 1)
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 100)
 
-    @patch.object(mp, "_request_meals")
-    @patch.object(mp, "get_targets")
-    def test_failed_generation_keeps_previous_suggestions(
-        self, mock_targets, mock_request
-    ):
-        mp._save_meals(self.valid_response)
-        mock_targets.return_value = self.targets
-        mock_request.side_effect = ValueError("Gemini failed")
+    def test_stock_is_rechecked_at_completion(self):
+        self.stock(200)
+        meal = self.save()
+        inventory.remove("Rice", 150, session_id="a")
+        with self.assertRaises(mp.InsufficientInventoryError):
+            mp.mark_meal_made(meal["meal_id"], session_id="a")
+        self.assertEqual(mp.get_made_meals("a"), [])
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 50)
 
+    def test_concurrent_make_and_undo_only_change_inventory_once(self):
+        self.stock(200)
+        meal = self.save()
+        def attempt(action):
+            try:
+                action(meal["meal_id"], session_id="a")
+                return True
+            except ValueError:
+                return False
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(attempt, [mp.mark_meal_made, mp.mark_meal_made]))
+        self.assertEqual(sum(results), 1)
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 100)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(attempt, [mp.unmark_meal_made, mp.unmark_meal_made]))
+        self.assertEqual(sum(results), 1)
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 200)
+
+    def test_undo_restores_actual_deduction_after_inventory_rounding(self):
+        self.stock(10)
+        meal = self.make({**self.meal, "ingredients": [{"name": "Rice", "quantity_g": 0.1234}]})
+        mp.unmark_meal_made(meal["meal_id"], session_id="a")
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 10)
+
+    def test_preferences_changes_preserve_made_meals(self):
+        from Application import grocery_planner
+        self.stock()
+        self.make()
+        with patch.object(grocery_planner, "USER_DATA_FOLDER", self.root):
+            grocery_planner.invalidate_weekly_plan()
+        self.assertEqual(len(mp.get_made_meals("a")), 1)
+        self.assertFalse(mp.suggestion_path("a").exists())
+
+    def test_day_rollover_and_session_isolation(self):
+        self.stock(300)
+        with patch.object(mp, "datetime") as clock:
+            clock.strptime = datetime.strptime
+            clock.now.return_value.astimezone.return_value = datetime(2026, 11, 26, 12, tzinfo=timezone.utc)
+            first = self.make()
+            clock.now.return_value.astimezone.return_value = datetime(2026, 11, 27, 12, tzinfo=timezone.utc)
+            self.make()
+        self.assertEqual(len(mp.get_made_meals("a", "2026-11-26")), 1)
+        self.assertEqual(len(mp.get_made_meals("a", "2026-11-27")), 1)
+        self.assertEqual(mp.get_made_meals("b", "2026-11-26"), [])
         with self.assertRaises(ValueError):
-            mp.generate_meal_suggestions()
+            mp.unmark_meal_made(first["meal_id"], session_id="b")
+        mp.unmark_meal_made(first["meal_id"], session_id="a")
+        self.assertEqual(mp.get_made_meals("a", "2026-11-26"), [])
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 200)
 
-        self.assertEqual(
-            mp._read_json(mp.suggestion_path()),
-            self.valid_response
-        )
+    def test_failed_history_write_rolls_back_inventory(self):
+        self.stock(200)
+        suggestion = self.save()
+        with patch.object(mp, "_save_json", side_effect=OSError("Disk unavailable")):
+            with self.assertRaises(OSError):
+                mp.mark_meal_made(suggestion["meal_id"], session_id="a")
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 200)
+        meal = mp.mark_meal_made(suggestion["meal_id"], session_id="a")["meal"]
+        with patch.object(mp, "_save_json", side_effect=OSError("Disk unavailable")):
+            with self.assertRaises(OSError):
+                mp.unmark_meal_made(meal["meal_id"], session_id="a")
+        self.assertEqual(inventory.get_inventory(session_id="a")[0]["quantity_g"], 100)
+        self.assertEqual(len(mp.get_made_meals("a")), 1)
 
-    # -------------------------
-    # GEMINI REQUEST TESTS
-    # -------------------------
+    def test_today_totals_change_on_make_and_undo(self):
+        from Application.intake import _made_macro_intake
+        self.stock()
+        self.save()
+        self.assertEqual(_made_macro_intake("a")["calories"], 0)
+        meal = self.make()
+        self.assertEqual(_made_macro_intake("a")["calories"], 350)
+        mp.unmark_meal_made(meal["meal_id"], session_id="a")
+        self.assertEqual(_made_macro_intake("a")["calories"], 0)
 
-    @patch.object(mp, "dotenv_values", return_value={})
-    @patch.dict("os.environ", {}, clear=True)
-    def test_request_meals_requires_api_key(self, mock_dotenv):
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
+    def test_validation_rejects_bad_quantities_and_nutrition(self):
+        for amount in (-1, 0, True, float("nan"), float("inf")):
+            invalid = copy.deepcopy(self.response)
+            invalid["meals"][0]["ingredients"][0]["quantity_g"] = amount
+            with self.assertRaises(ValueError):
+                mp._validate_meals(invalid)
+        for amount in (-1, True, float("nan")):
+            invalid = copy.deepcopy(self.response)
+            invalid["meals"][0]["calories"] = amount
+            with self.assertRaises(ValueError):
+                mp._validate_meals(invalid)
 
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "   ",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    def test_request_meals_rejects_blank_api_key(self, mock_dotenv):
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    def test_request_meals_requires_model(self, mock_dotenv):
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
     @patch.object(mp.genai, "Client")
-    def test_request_meals_returns_valid_response(
-        self, mock_client, mock_dotenv
-    ):
-        client = make_client(
-            mock_client, make_response(json.dumps(self.valid_response))
-        )
-
-        result = mp._request_meals({"number_of_meals": 1})
-
-        self.assertEqual(result, self.valid_response)
-        client.models.generate_content.assert_called_once()
-
-        call = client.models.generate_content.call_args.kwargs
-        self.assertEqual(call["model"], "test-model")
-        self.assertEqual(
-            json.loads(call["contents"]),
-            {"number_of_meals": 1}
-        )
-        self.assertEqual(
-            call["config"].system_instruction,
-            mp.MEAL_GENERATION_PROMPT
-        )
-        mock_client.assert_called_once()
-        self.assertEqual(
-            mock_client.call_args.kwargs["api_key"],
-            "test-key"
-        )
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "file-key",
-        "GEMINI_MODEL": "file-model"
-    })
-    @patch.dict("os.environ", {
-        "GEMINI_API_KEY": "env-key",
-        "GEMINI_MODEL": "env-model"
-    }, clear=True)
-    @patch.object(mp.genai, "Client")
-    def test_request_meals_prefers_environment_variables(
-        self, mock_client, mock_dotenv
-    ):
-        client = make_client(
-            mock_client, make_response(json.dumps(self.valid_response))
-        )
-
-        mp._request_meals({})
-
-        self.assertEqual(mock_client.call_args.kwargs["api_key"], "env-key")
-        self.assertEqual(
-            client.models.generate_content.call_args.kwargs["model"],
-            "env-model"
-        )
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    @patch.object(mp.genai, "Client")
-    def test_request_meals_rejects_unfinished_response(
-        self, mock_client, mock_dotenv
-    ):
-        make_client(
-            mock_client,
-            make_response(
-                json.dumps(self.valid_response),
-                types.FinishReason.MAX_TOKENS
-            )
-        )
-
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    @patch.object(mp.genai, "Client")
-    def test_request_meals_rejects_no_candidates(
-        self, mock_client, mock_dotenv
-    ):
-        response = make_response(json.dumps(self.valid_response))
-        response.candidates = []
-        make_client(mock_client, response)
-
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    @patch.object(mp.genai, "Client")
-    def test_request_meals_rejects_invalid_json(
-        self, mock_client, mock_dotenv
-    ):
-        make_client(mock_client, make_response("not valid json"))
-
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    @patch.object(mp.genai, "Client")
-    def test_request_meals_rejects_missing_text(
-        self, mock_client, mock_dotenv
-    ):
-        make_client(mock_client, make_response(None))
-
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    @patch.object(mp, "dotenv_values", return_value={
-        "GEMINI_API_KEY": "test-key",
-        "GEMINI_MODEL": "test-model"
-    })
-    @patch.dict("os.environ", {}, clear=True)
-    @patch.object(mp.genai, "Client")
-    def test_request_meals_validates_returned_meals(
-        self, mock_client, mock_dotenv
-    ):
-        invalid = self.response_with(calories=-100)
-        make_client(mock_client, make_response(json.dumps(invalid)))
-
-        with self.assertRaises(ValueError):
-            mp._request_meals({})
-
-    # -------------------------
-    # SCHEMA TESTS
-    # -------------------------
-
-    def test_schema_requires_every_meal_field(self):
-        meal_schema = mp.MEAL_RESPONSE_SCHEMA["properties"]["meals"]["items"]
-
-        self.assertEqual(
-            set(meal_schema["required"]),
-            set(mp.MEAL_PROPERTIES)
-        )
-        for nutrient in mp.NUTRIENTS:
-            self.assertIn(nutrient, meal_schema["required"])
+    @patch.object(mp, "dotenv_values", return_value={"GEMINI_API_KEY": "test", "GEMINI_MODEL": "test"})
+    def test_request_accepts_empty_response_for_inventory_warning(self, settings, mock_client):
+        response = MagicMock()
+        response.candidates = [MagicMock(finish_reason=types.FinishReason.STOP)]
+        response.text = '{"meals": [], "notes": "Not enough food"}'
+        mock_client.return_value.__enter__.return_value.models.generate_content.return_value = response
+        self.assertEqual(mp._request_meals({})["meals"], [])
 
 
 if __name__ == "__main__":
