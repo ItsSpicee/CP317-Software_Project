@@ -1,7 +1,10 @@
-"""Manual session inventory, independent of grocery and meal planners.
+"""Session inventory shared by the Inventory, Groceries, and Meals pages.
 
 One JSON file contains all session inventories. A process lock serializes
 read/modify/write operations in this single-process prototype.
+
+Every saved item keeps at least 1 g, so each operation checks its result
+before saving. A failed check leaves the file untouched.
 """
 
 import json
@@ -12,6 +15,9 @@ from uuid import uuid4
 
 INVENTORY_FILE = Path(__file__).resolve().parent.parent / "User Data" / "inventory.json"
 GROCERY_TYPES = ("meat", "dairy", "produce", "dry_goods")
+TYPE_LABELS = {"meat": "Meat", "dairy": "Dairy", "produce": "Produce", "dry_goods": "Dry goods"}
+MAX_NAME_LENGTH = 80
+MAX_QUANTITY_G = 100_000
 _LOCK = RLock()
 
 
@@ -21,10 +27,13 @@ def _session(value: str) -> str:
     return value.strip()
 
 
-def _name(value: str) -> str:
+def _name(value: str, *, check_length: bool = True) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError("Enter an item name.")
-    return " ".join(value.split())
+    name = " ".join(value.split())
+    if check_length and len(name) > MAX_NAME_LENGTH:
+        raise ValueError(f"Use {MAX_NAME_LENGTH} characters or fewer for the item name.")
+    return name
 
 
 def _number(value) -> float:
@@ -37,6 +46,24 @@ def _number(value) -> float:
     if not math.isfinite(number):
         raise ValueError("Enter a finite weight in grams.")
     return number
+
+
+def _quantity(value: float) -> float:
+    """Round away float drift and enforce the per-item ceiling."""
+    quantity = round(_number(value), 3)
+    if quantity > MAX_QUANTITY_G:
+        raise ValueError(f"An item can hold at most {MAX_QUANTITY_G:,} g.")
+    return quantity
+
+
+def _category(value: str) -> str:
+    if value not in GROCERY_TYPES:
+        raise ValueError("Choose meat, dairy, produce, or dry_goods.")
+    return value
+
+
+def _grams(value: float) -> str:
+    return f"{value:,.2f}".rstrip("0").rstrip(".") + " g"
 
 
 def _read() -> dict:
@@ -57,7 +84,7 @@ def _read() -> dict:
             for item in items:
                 if not isinstance(item, dict):
                     raise ValueError()
-                name = _name(item.get("name")).casefold()
+                name = _name(item.get("name"), check_length=False).casefold()
                 if name in names or item.get("grocery_type") not in GROCERY_TYPES:
                     raise ValueError()
                 names.add(name)
@@ -79,11 +106,16 @@ def _save(data: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def _lookup(items: list[dict], name: str) -> dict | None:
+    key = name.casefold()
+    return next((item for item in items if item["name"].casefold() == key), None)
+
+
 def _find(items: list[dict], name: str) -> dict:
-    for item in items:
-        if item["name"].casefold() == name.casefold():
-            return item
-    raise ValueError("That item is not in this session's inventory.")
+    item = _lookup(items, name)
+    if item is None:
+        raise ValueError(f"{name} is not in your inventory.")
+    return item
 
 
 def get_inventory(*, session_id: str) -> list[dict]:
@@ -98,18 +130,63 @@ def add(item: str, amount: float, grocery_type: str, *, session_id: str) -> list
     session_id, name, amount = _session(session_id), _name(item), _number(amount)
     if amount < 1:
         raise ValueError("Add at least 1 gram.")
-    if grocery_type not in GROCERY_TYPES:
-        raise ValueError("Choose meat, dairy, produce, or dry_goods.")
+    grocery_type = _category(grocery_type)
     with _LOCK:
         data = _read()
         items = data["sessions"].setdefault(session_id, [])
-        existing = next((row for row in items if row["name"].casefold() == name.casefold()), None)
+        existing = _lookup(items, name)
         if existing is None:
-            items.append({"name": name, "quantity_g": amount, "grocery_type": grocery_type})
+            items.append({"name": name, "quantity_g": _quantity(amount), "grocery_type": grocery_type})
         else:
             if existing["grocery_type"] != grocery_type:
-                raise ValueError("This item already exists in another category. Use its existing category.")
-            existing["quantity_g"] = _number(existing["quantity_g"] + amount)
+                label = TYPE_LABELS[existing["grocery_type"]]
+                raise ValueError(f"{existing['name']} is already listed under {label}. Use that category.")
+            existing["quantity_g"] = _quantity(existing["quantity_g"] + amount)
+        _save(data)
+        return items
+
+
+def add_many(groceries: list[dict], *, session_id: str) -> list[dict]:
+    """Add a purchased grocery list in one save.
+
+    Each entry needs name, quantity_g, and grocery_type. Names already in the
+    inventory are topped up and keep their existing category. Amounts under
+    1 g are rounded up to 1 g, since an item must hold at least 1 g.
+    Nothing is saved unless every entry is valid.
+    """
+    session_id = _session(session_id)
+    if not isinstance(groceries, list) or not groceries:
+        raise ValueError("There are no groceries to add.")
+
+    incoming: dict[str, dict] = {}
+    for grocery in groceries:
+        if not isinstance(grocery, dict):
+            raise ValueError("Each grocery must be an object.")
+        name = _name(grocery.get("name"))
+        amount = _number(grocery.get("quantity_g"))
+        if amount <= 0:
+            raise ValueError(f"{name} needs a positive weight.")
+        grocery_type = _category(grocery.get("grocery_type"))
+        key = name.casefold()
+        if key in incoming:
+            incoming[key]["quantity_g"] += amount
+        else:
+            incoming[key] = {"name": name, "quantity_g": amount, "grocery_type": grocery_type}
+
+    with _LOCK:
+        data = _read()
+        items = data["sessions"].setdefault(session_id, [])
+        updates = []
+        for entry in incoming.values():
+            existing = _lookup(items, entry["name"])
+            current = existing["quantity_g"] if existing else 0
+            updates.append((existing, entry, _quantity(current + max(entry["quantity_g"], 1))))
+        # Every total passed its check, so apply them all.
+        for existing, entry, quantity in updates:
+            if existing is None:
+                items.append({"name": entry["name"], "quantity_g": quantity, "grocery_type": entry["grocery_type"]})
+            else:
+                existing["quantity_g"] = quantity
         _save(data)
         return items
 
@@ -127,12 +204,14 @@ def remove(item: str, amount: float, *, session_id: str) -> list[dict]:
         items = data["sessions"].get(session_id, [])
         existing = _find(items, name)
         remaining = existing["quantity_g"] - amount
-        if math.isclose(remaining, 0, abs_tol=1e-9):
+        if math.isclose(remaining, 0, abs_tol=1e-6):
             items.remove(existing)
+        elif remaining < 0:
+            raise ValueError(f"Only {_grams(existing['quantity_g'])} of {existing['name']} is available.")
         elif remaining < 1:
-            raise ValueError("Remove no more than the available weight and leave at least 1 gram, or remove the full amount.")
+            raise ValueError("At least 1 gram must remain. Remove the full amount to delete the item.")
         else:
-            existing["quantity_g"] = remaining
+            existing["quantity_g"] = _quantity(remaining)
         _save(data)
         return items
 
@@ -151,6 +230,8 @@ def delete(item: str, *, session_id: str) -> list[dict]:
 def modify(item: str, change: float, *, session_id: str) -> list[dict]:
     """Apply a signed gram adjustment, rejecting any result below 1 g."""
     session_id, name, change = _session(session_id), _name(item), _number(change)
+    if change == 0:
+        raise ValueError("Enter a change other than 0.")
     with _LOCK:
         data = _read()
         items = data["sessions"].get(session_id, [])
@@ -158,36 +239,29 @@ def modify(item: str, change: float, *, session_id: str) -> list[dict]:
         quantity = _number(existing["quantity_g"] + change)
         if quantity < 1:
             raise ValueError("An adjustment must leave at least 1 gram. Use Remove to delete the full amount.")
-        existing["quantity_g"] = quantity
+        existing["quantity_g"] = _quantity(quantity)
         _save(data)
         return items
 
-def consume_many(
-    ingredients: list[dict],
-    *,
-    session_id: str,
-) -> list[dict]:
-    """Atomically consume multiple ingredients from inventory."""
 
+def consume_many(ingredients: list[dict], *, session_id: str) -> list[dict]:
+    """Atomically consume multiple ingredients from inventory.
+
+    Each ingredient is either used up completely or leaves at least 1 g.
+    """
     session_id = _session(session_id)
-
     if not isinstance(ingredients, list) or not ingredients:
         raise ValueError("A meal must contain ingredients.")
 
-    required = {}
-
+    required: dict[str, float] = {}
     for ingredient in ingredients:
         if not isinstance(ingredient, dict):
             raise ValueError("Invalid meal ingredient.")
-
-        name = _name(ingredient.get("name"))
+        name = _name(ingredient.get("name"), check_length=False)
         amount = _number(ingredient.get("quantity_g"))
-
         if amount <= 0:
             raise ValueError("Ingredient quantities must be positive.")
-
         key = name.casefold()
-
         required[key] = required.get(key, 0) + amount
 
     with _LOCK:
@@ -195,40 +269,26 @@ def consume_many(
         items = data["sessions"].get(session_id, [])
 
         # Validate every ingredient before changing anything.
+        plan = []
         for key, amount in required.items():
-            existing = next(
-                (
-                    item for item in items
-                    if item["name"].casefold() == key
-                ),
-                None,
-            )
-
+            existing = _lookup(items, key)
             if existing is None:
-                raise ValueError(
-                    f"{key.title()} is not in your inventory."
-                )
-
-            if existing["quantity_g"] < amount:
-                raise ValueError(
-                    f"Not enough {existing['name']} in inventory."
-                )
-
-        # All ingredients are available.
-        # Now apply every deduction.
-        for key, amount in required.items():
-            existing = next(
-                item for item in items
-                if item["name"].casefold() == key
-            )
-
+                raise ValueError(f"{key.title()} is not in your inventory.")
             remaining = existing["quantity_g"] - amount
+            if remaining < -1e-6:
+                raise ValueError(f"Not enough {existing['name']} in inventory.")
+            if 1e-6 < remaining < 1:
+                raise ValueError(
+                    f"Using this recipe would leave less than 1 g of {existing['name']}. "
+                    "Adjust the inventory amount or recipe."
+                )
+            plan.append((existing, remaining))
 
-            if math.isclose(remaining, 0, abs_tol=1e-9):
+        for existing, remaining in plan:
+            if remaining <= 1e-6:
                 items.remove(existing)
             else:
-                existing["quantity_g"] = remaining
+                existing["quantity_g"] = _quantity(remaining)
 
         _save(data)
-
         return items

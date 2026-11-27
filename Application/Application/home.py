@@ -70,10 +70,14 @@ class OverviewState(rx.State):
             self.grocery_note = ""
         else:
             count = len(suggestion["items"])
+            pantry = len(suggestion.get("inventory_used", []))
             weekly = float(suggestion["estimated_weekly_totals"]["calories"])
             noun = "item" if count == 1 else "items"
+            summary = f"{count} {noun} to buy"
+            if pantry:
+                summary += f" · {pantry} from your inventory"
             self.has_grocery = True
-            self.grocery_summary = f"{count} {noun} · {weekly:,.0f} kcal this week"
+            self.grocery_summary = f"{summary} · {weekly:,.0f} kcal this week"
             self.grocery_note = _clip(str(suggestion.get("notes", "")))
 
         names: list[str] = []
