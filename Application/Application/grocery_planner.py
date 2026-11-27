@@ -21,7 +21,7 @@ from google.genai import types
 
 from . import inventory
 from .get_targets import get_targets
-from .dietary_restrictions import get_religious_restrictions
+from .preferences_data import get_dietary_preferences
 
 
 USER_DATA_FOLDER = Path(__file__).resolve().parent.parent / "User Data"
@@ -155,12 +155,7 @@ def inventory_fingerprint(stock: list[dict]) -> list[list]:
 def _planning_context(stock: list[dict]) -> dict:
     profile = _read_json(USER_DATA_FOLDER / "user_data.json")
     preferences = _read_json(USER_DATA_FOLDER / "user_personalization_data.json")
-    for field in ("allergies", "diet_types"):
-        choices = preferences.get(field, [])
-        if not isinstance(choices, list) or any(
-            not isinstance(choice, str) or not choice.strip() for choice in choices
-        ):
-            raise ValueError(f"{field} must be a list of nonempty strings.")
+    dietary_preferences = get_dietary_preferences(preferences)
 
     targets = get_targets(profile, preferences)
     daily = {name: targets[name] for name in NUTRIENTS}
@@ -170,9 +165,7 @@ def _planning_context(stock: list[dict]) -> dict:
         "days": 7,
         "daily_targets": daily,
         "weekly_targets": {name: amount * 7 for name, amount in daily.items()},
-        "allergies": preferences.get("allergies", []),
-        "diet_types": preferences.get("diet_types", []),
-        "religious_restrictions": get_religious_restrictions(preferences),
+        **dietary_preferences,
         "current_inventory": [
             {"name": row["name"], "quantity_g": row["quantity_g"], "grocery_type": row["grocery_type"]}
             for row in stock

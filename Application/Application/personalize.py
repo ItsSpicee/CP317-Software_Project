@@ -5,28 +5,14 @@ from pathlib import Path
 
 from .grocery_planner import invalidate_weekly_plan
 from .navigation import NavigationState
-from .dietary_restrictions import RELIGIOUS_RESTRICTIONS
+from .preferences_data import DIETS, FOOD_ALLERGIES, RELIGIOUS_RESTRICTIONS, get_dietary_preferences
 from .ui import actions, entry, field, go, menu, page, press, steps
 
 
 PARENT_DIR = Path(__file__).resolve().parent.parent
 USER_DATA_FOLDER = PARENT_DIR / "User Data"
 
-DIETS = ["Vegetarian", "Vegan", "Keto", "Gluten Free", "Carnivore", "Animal Based"]
 GOALS = ["Maintenance", "Weight Gain", "Weight Loss"]
-
-FOOD_ALLERGIES = [
-    "Eggs",
-    "Milk",
-    "Mustard",
-    "Peanuts",
-    "Crustaceans",
-    "Fish",
-    "Sesame seeds",
-    "Soy",
-    "Sulphites",
-    "Tree nuts"
-]
 
 class PersonalizationState(rx.State):
     editing: bool = False
@@ -85,21 +71,10 @@ class PersonalizationState(rx.State):
         goal = str(saved_data.get("current_goal", "Maintenance") or "Maintenance")
         self.current_goal = goal if goal in GOALS else "Maintenance"
 
-        allergies = saved_data.get("allergies", [])
-        diets = saved_data.get("diet_types", [])
-        self.allergies = (
-            [option for option in FOOD_ALLERGIES if option in allergies]
-            if isinstance(allergies, list) else []
-        )
-        self.diet_types = (
-            [option for option in DIETS if option in diets]
-            if isinstance(diets, list) else []
-        )
-        restrictions = saved_data.get("religious_restrictions", [])
-        self.religious_restrictions = (
-            [option for option in RELIGIOUS_RESTRICTIONS if option in restrictions]
-            if isinstance(restrictions, list) else []
-        )
+        selections = get_dietary_preferences(saved_data, strict=False)
+        self.allergies = selections["allergies"]
+        self.diet_types = selections["diet_types"]
+        self.religious_restrictions = selections["religious_restrictions"]
         self.calories_error = ""
         self.goal_error = ""
 
@@ -117,6 +92,8 @@ class PersonalizationState(rx.State):
 
     @rx.event
     def toggle_allergy(self, allergy: str, checked: bool):
+        if allergy not in FOOD_ALLERGIES:
+            return
         if checked and allergy not in self.allergies:
             self.allergies.append(allergy)
         elif not checked and allergy in self.allergies:
@@ -124,6 +101,8 @@ class PersonalizationState(rx.State):
 
     @rx.event
     def toggle_diet(self, diet: str, checked: bool):
+        if diet not in DIETS:
+            return
         if checked and diet not in self.diet_types:
             self.diet_types.append(diet)
         elif not checked and diet in self.diet_types:
@@ -183,9 +162,11 @@ class PersonalizationState(rx.State):
             "calories": calories,
             "current_goal": current_goal,
             "muscle_gain": bool(self.muscle_gain),
-            "allergies": list(self.allergies),
-            "diet_types": list(self.diet_types),
-            "religious_restrictions": list(getattr(self, "religious_restrictions", [])),
+            **get_dietary_preferences({
+                "allergies": list(self.allergies),
+                "diet_types": list(self.diet_types),
+                "religious_restrictions": list(getattr(self, "religious_restrictions", [])),
+            }),
             "fiber": self.fiber,
         }
 

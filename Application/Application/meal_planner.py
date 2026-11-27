@@ -21,7 +21,7 @@ from google.genai import types
 
 from .get_targets import get_targets
 from . import inventory
-from .dietary_restrictions import get_religious_restrictions
+from .preferences_data import get_dietary_preferences
 
 
 USER_DATA_FOLDER = Path(__file__).resolve().parent.parent / "User Data"
@@ -302,16 +302,7 @@ def _meal_context(session_id: str | None = None) -> dict:
         USER_DATA_FOLDER / "user_personalization_data.json"
     )
 
-    for field in ("allergies", "diet_types"):
-        choices = preferences.get(field, [])
-
-        if not isinstance(choices, list) or any(
-            not isinstance(choice, str) or not choice.strip()
-            for choice in choices
-        ):
-            raise ValueError(
-                f"{field} must be a list of nonempty strings."
-            )
+    dietary_preferences = get_dietary_preferences(preferences)
 
     targets = get_targets(profile, preferences)
     daily_targets = {
@@ -330,9 +321,7 @@ def _meal_context(session_id: str | None = None) -> dict:
         "daily_targets": daily_targets,
         "goal": preferences.get("current_goal", "Maintenance"),
         "muscle_gain": preferences.get("muscle_gain", False),
-        "allergies": preferences.get("allergies", []),
-        "diet_types": preferences.get("diet_types", []),
-        "religious_restrictions": get_religious_restrictions(preferences),
+        **dietary_preferences,
         "available_ingredients": available_ingredients,
     }
 
