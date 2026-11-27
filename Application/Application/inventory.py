@@ -161,3 +161,74 @@ def modify(item: str, change: float, *, session_id: str) -> list[dict]:
         existing["quantity_g"] = quantity
         _save(data)
         return items
+
+def consume_many(
+    ingredients: list[dict],
+    *,
+    session_id: str,
+) -> list[dict]:
+    """Atomically consume multiple ingredients from inventory."""
+
+    session_id = _session(session_id)
+
+    if not isinstance(ingredients, list) or not ingredients:
+        raise ValueError("A meal must contain ingredients.")
+
+    required = {}
+
+    for ingredient in ingredients:
+        if not isinstance(ingredient, dict):
+            raise ValueError("Invalid meal ingredient.")
+
+        name = _name(ingredient.get("name"))
+        amount = _number(ingredient.get("quantity_g"))
+
+        if amount <= 0:
+            raise ValueError("Ingredient quantities must be positive.")
+
+        key = name.casefold()
+
+        required[key] = required.get(key, 0) + amount
+
+    with _LOCK:
+        data = _read()
+        items = data["sessions"].get(session_id, [])
+
+        # Validate every ingredient before changing anything.
+        for key, amount in required.items():
+            existing = next(
+                (
+                    item for item in items
+                    if item["name"].casefold() == key
+                ),
+                None,
+            )
+
+            if existing is None:
+                raise ValueError(
+                    f"{key.title()} is not in your inventory."
+                )
+
+            if existing["quantity_g"] < amount:
+                raise ValueError(
+                    f"Not enough {existing['name']} in inventory."
+                )
+
+        # All ingredients are available.
+        # Now apply every deduction.
+        for key, amount in required.items():
+            existing = next(
+                item for item in items
+                if item["name"].casefold() == key
+            )
+
+            remaining = existing["quantity_g"] - amount
+
+            if math.isclose(remaining, 0, abs_tol=1e-9):
+                items.remove(existing)
+            else:
+                existing["quantity_g"] = remaining
+
+        _save(data)
+
+        return items
