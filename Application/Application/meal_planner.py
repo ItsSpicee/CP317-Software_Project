@@ -21,6 +21,7 @@ from google.genai import types
 
 from .get_targets import get_targets
 from . import inventory
+from .dietary_restrictions import get_religious_restrictions
 
 
 USER_DATA_FOLDER = Path(__file__).resolve().parent.parent / "User Data"
@@ -112,6 +113,12 @@ IMPORTANT RULES:
 
 1. ALLERGIES AND DIETARY RESTRICTIONS
 - Allergies and dietary restrictions are mandatory.
+- religious_restrictions are equally mandatory. Apply every selected practice
+  to ingredient choices, combinations, preparation, and compound ingredients.
+- Do not assume generic inventory meat or packaged foods have required
+  certification. If compliance cannot be established from the inventory
+  descriptions, choose suitable alternatives using listed stock, or return
+  no meal when none is suitable. Never claim to verify certification.
 - Never recommend ingredients that conflict with allergies.
 - Consider ingredients within sauces, dressings, seasonings,
   packaged foods, and compound ingredients.
@@ -183,6 +190,7 @@ Generate personalized meal suggestions using the supplied:
 - Dietary goals
 - Allergies
 - Dietary preferences
+- Religious restrictions
 - Available grocery inventory
 
 Generate exactly ONE meal of the requested meal_type, or no meal if the
@@ -324,6 +332,7 @@ def _meal_context(session_id: str | None = None) -> dict:
         "muscle_gain": preferences.get("muscle_gain", False),
         "allergies": preferences.get("allergies", []),
         "diet_types": preferences.get("diet_types", []),
+        "religious_restrictions": get_religious_restrictions(preferences),
         "available_ingredients": available_ingredients,
     }
 

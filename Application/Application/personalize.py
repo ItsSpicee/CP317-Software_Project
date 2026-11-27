@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .grocery_planner import invalidate_weekly_plan
 from .navigation import NavigationState
+from .dietary_restrictions import RELIGIOUS_RESTRICTIONS
 from .ui import actions, entry, field, go, menu, page, press, steps
 
 
@@ -31,6 +32,7 @@ class PersonalizationState(rx.State):
     editing: bool = False
     allergies: list[str] = []
     diet_types: list[str] = []
+    religious_restrictions: list[str] = []
     fiber: float = 30.0
     muscle_gain: bool = False
     calories: str = ""
@@ -93,6 +95,11 @@ class PersonalizationState(rx.State):
             [option for option in DIETS if option in diets]
             if isinstance(diets, list) else []
         )
+        restrictions = saved_data.get("religious_restrictions", [])
+        self.religious_restrictions = (
+            [option for option in RELIGIOUS_RESTRICTIONS if option in restrictions]
+            if isinstance(restrictions, list) else []
+        )
         self.calories_error = ""
         self.goal_error = ""
 
@@ -125,6 +132,15 @@ class PersonalizationState(rx.State):
     @rx.event
     def set_fiber(self, value: list[int | float]):
         self.fiber = value[0]
+
+    @rx.event
+    def toggle_religious_restriction(self, restriction: str, checked: bool):
+        if restriction not in RELIGIOUS_RESTRICTIONS:
+            return
+        if checked and restriction not in self.religious_restrictions:
+            self.religious_restrictions.append(restriction)
+        elif not checked and restriction in self.religious_restrictions:
+            self.religious_restrictions.remove(restriction)
 
     @rx.var
     def fiber_label(self) -> str:
@@ -169,6 +185,7 @@ class PersonalizationState(rx.State):
             "muscle_gain": bool(self.muscle_gain),
             "allergies": list(self.allergies),
             "diet_types": list(self.diet_types),
+            "religious_restrictions": list(getattr(self, "religious_restrictions", [])),
             "fiber": self.fiber,
         }
 
@@ -210,6 +227,19 @@ def diet_checkbox(diet: str) -> rx.Component:
             color_scheme="jade",
             checked=PersonalizationState.diet_types.contains(diet),
             on_change=lambda checked: PersonalizationState.toggle_diet(diet, checked),
+        ),
+        class_name="ns-choice",
+    )
+
+
+def religious_checkbox(restriction: str) -> rx.Component:
+    return rx.box(
+        rx.checkbox(
+            restriction,
+            size="2",
+            color_scheme="jade",
+            checked=PersonalizationState.religious_restrictions.contains(restriction),
+            on_change=lambda checked: PersonalizationState.toggle_religious_restriction(restriction, checked),
         ),
         class_name="ns-choice",
     )
@@ -315,6 +345,18 @@ def personalize(edit: bool = False) -> rx.Component:
                         rx.el.h2("Diet types", class_name="ns-label"),
                         rx.el.div(
                             *[diet_checkbox(diet) for diet in DIETS],
+                            class_name="ns-choices",
+                        ),
+                        class_name="ns-group",
+                    ),
+                    rx.el.div(
+                        rx.el.h2("Religious Restrictions", class_name="ns-label"),
+                        rx.el.p(
+                            "Choose the food practices you follow. Check product labels and certification where required.",
+                            class_name="ns-hint",
+                        ),
+                        rx.el.div(
+                            *[religious_checkbox(option) for option in RELIGIOUS_RESTRICTIONS],
                             class_name="ns-choices",
                         ),
                         class_name="ns-group",

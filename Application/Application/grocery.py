@@ -143,10 +143,10 @@ def _friendly_error(exc: Exception) -> tuple[str, str]:
         return "error", "Set a positive calorie target on Preferences before planning groceries."
     if "user_data.json" in message or "user_personalization_data.json" in message:
         return "error", "Complete Profile and Preferences before planning groceries."
-    if "allergies" in message or "diet_types" in message:
+    if any(field in message for field in ("allergies", "diet_types", "religious_restrictions")):
         return (
             "error",
-            "Saved allergies or diet types look invalid. Re-save Preferences, then try again.",
+            "Saved dietary restrictions look invalid. Re-save Preferences, then try again.",
         )
     if "Provide nonempty feedback" in message:
         return "error", "Enter feedback describing what to change."

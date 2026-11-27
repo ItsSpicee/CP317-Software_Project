@@ -29,9 +29,9 @@ def _friendly_error(exc: Exception) -> str:
     if "user_data.json" in message or "user_personalization_data.json" in message:
         return "Complete Profile and Preferences before generating meals."
 
-    if "allergies" in message or "diet_types" in message:
+    if any(field in message for field in ("allergies", "diet_types", "religious_restrictions")):
         return (
-            "Saved allergies or diet types look invalid. "
+            "Saved dietary restrictions look invalid. "
             "Re-save Preferences, then try again."
         )
 

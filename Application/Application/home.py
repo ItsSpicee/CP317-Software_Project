@@ -60,7 +60,7 @@ class OverviewState(rx.State):
         targets = _get_target_values()
         self.intent_line = f"{targets['detail_line']} · {float(targets['calories']):,.0f} kcal"
         chips: list[str] = []
-        for field in ("allergies", "diet_types"):
+        for field in ("allergies", "diet_types", "religious_restrictions"):
             choices = preferences.get(field, [])
             if isinstance(choices, list):
                 chips.extend(str(choice).strip() for choice in choices if str(choice).strip())
