@@ -98,8 +98,9 @@ class InventoryState(rx.State):
     def adjust_item(self, form_data: dict):
         self.error = ""
         try:
+            name = self.selected
             self._apply(stock.modify(self.selected, form_data.get("change", ""), session_id=self._session_id()))
-            self.status = "Inventory weight updated."
+            self.status = "Inventory weight updated." if self.selected else f"Removed {name} from inventory."
         except (ValueError, OSError) as exc:
             self._failure(exc)
 
@@ -111,16 +112,6 @@ class InventoryState(rx.State):
             self.status = f"Removed {name} from inventory."
         except (ValueError, OSError) as exc:
             self._failure(exc)
-
-    @rx.event
-    def remove_amount(self, form_data: dict):
-        self.error = ""
-        try:
-            self._apply(stock.remove(self.selected, form_data.get("amount", ""), session_id=self._session_id()))
-            self.status = "Removed the specified weight from inventory."
-        except (ValueError, OSError) as exc:
-            self._failure(exc)
-
 
 def inventory_row(item) -> rx.Component:
     return rx.el.li(
@@ -206,17 +197,10 @@ def inventory_page() -> rx.Component:
                 InventoryState.selected != "",
                 rx.el.section(
                     rx.el.div(rx.icon("scale", size=21), rx.el.h2("Adjust " + InventoryState.selected, class_name="ns-card-title"), class_name="ns-inventory-heading"),
-                    rx.el.div(
-                        rx.form(
-                            field("Change (g)", entry(name="change", id="inventory-change", type="number", step="any", placeholder="e.g. +100 or -50", required=True), "Add or subtract grams. At least 1 g must remain.", for_id="inventory-change"),
-                            press("Apply change", "secondary", type="submit"),
-                            on_submit=InventoryState.adjust_item, class_name="ns-stack",
-                        ),
-                        rx.form(
-                            field("Remove weight (g)", entry(name="amount", id="inventory-remove", type="number", min=0, step="any", placeholder="Weight to remove", required=True), "Remove the full weight to delete the item.", for_id="inventory-remove"),
-                            press("Remove weight", "secondary", type="submit"),
-                            on_submit=InventoryState.remove_amount, class_name="ns-stack",
-                        ), class_name="ns-row",
+                    rx.form(
+                        field("Change (g)", entry(name="change", id="inventory-change", type="number", step="any", placeholder="e.g. +100 or -50", required=True), "Add or subtract grams. Subtract the full weight or more to delete the item.", for_id="inventory-change"),
+                        press("Apply change", "secondary", type="submit"),
+                        on_submit=InventoryState.adjust_item, class_name="ns-stack",
                     ), class_name="ns-overview-card ns-inventory-adjust",
                 ),
             ),

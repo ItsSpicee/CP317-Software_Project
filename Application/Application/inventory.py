@@ -228,7 +228,7 @@ def delete(item: str, *, session_id: str) -> list[dict]:
 
 
 def modify(item: str, change: float, *, session_id: str) -> list[dict]:
-    """Apply a signed gram adjustment, rejecting any result below 1 g."""
+    """Apply a signed adjustment; reaching or passing zero deletes the item."""
     session_id, name, change = _session(session_id), _name(item), _number(change)
     if change == 0:
         raise ValueError("Enter a change other than 0.")
@@ -237,9 +237,12 @@ def modify(item: str, change: float, *, session_id: str) -> list[dict]:
         items = data["sessions"].get(session_id, [])
         existing = _find(items, name)
         quantity = _number(existing["quantity_g"] + change)
-        if quantity < 1:
-            raise ValueError("An adjustment must leave at least 1 gram. Use Remove to delete the full amount.")
-        existing["quantity_g"] = _quantity(quantity)
+        if quantity <= 0 or math.isclose(quantity, 0, abs_tol=1e-6):
+            items.remove(existing)
+        elif quantity < 1:
+            raise ValueError("At least 1 gram must remain. Subtract the full weight or more to delete the item.")
+        else:
+            existing["quantity_g"] = _quantity(quantity)
         _save(data)
         return items
 

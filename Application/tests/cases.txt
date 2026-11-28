@@ -1,0 +1,111 @@
+Click Get Started on the intro page.
+Leave the profile fields blank and click Skip.
+Leave Preferences unchanged and click Skip.
+Click Continue to main menu after skipping Profile and Preferences.
+Compare the nutrition targets on Targets and Overview.
+Click Open groceries, Open meals, and Open inventory on Overview.
+Open Edit profile, enter Test User as the name, and click Save changes.
+Edit the profile name and click Cancel.
+Set the calorie target to 2000 in Preferences and save. Check Overview and Targets.
+Open Settings and confirm reset.
+Try finishing setup before reaching Targets.
+Finish setup after reaching Targets.
+Access the menu before completing setup.
+Load Overview with no saved groceries, inventory, or made meals.
+Load Overview with a saved name and dietary preferences.
+Compare default targets with Overview before making meals.
+Save a 2,000-calorie target and reload Overview.
+Add inventory items in two categories and load Overview.
+Mark a meal as made, check Overview, then unmark it.
+Cancel reset, then attempt the reset handler.
+Request reset while generation is running.
+Confirm reset after setup is complete.
+Add Rice with a quantity of 500 g under Dry goods.
+Refresh Inventory after adding Rice.
+Add 100 g to Rice using the quantity adjustment control.
+Remove 200 g from the 600 g of Rice.
+Try removing 500 g when only 400 g of Rice is available.
+Remove the full 400 g of Rice.
+Leave Item name blank, enter 100 g, and click Add to inventory.
+Generate a grocery plan with 500 g of Rice in Inventory
+Click Record purchase, then open Inventory.
+Return to Grocery after recording the purchase and check if Record purchase is disabled
+Count the same inventory item twice in a plan.
+Combine existing stock and recommended purchases.
+Simulate a timeout during generation.
+Generate a plan with saved inventory and targets.
+Generate with saved dietary restrictions.
+Return a negative grocery quantity.
+Supply invalid nutrition values.
+Generate a plan covered entirely by existing inventory.
+Change inventory after generating a plan.
+Request more inventory than is available.
+Revise a plan after changing inventory.
+Include an unavailable food in inventory use.
+Simulate invalid JSON from Gemini.
+Request generation without an API key.
+Add Rice and reload inventory.
+Increase and decrease an item's weight.
+Enter zero or an adjustment leaving less than 1 g.
+Add several items with one invalid entry.
+Add an existing item under another category.
+Make simultaneous additions to one item.
+Try updating an unreadable inventory file.
+Add blank names, invalid categories, or invalid weights.
+Remove 500 g when only 400 g is available.
+Remove part of an item, then the remaining quantity.
+Delete a complete inventory entry.
+Add Rice again with different capitalization and spacing.
+Load inventory from another browser session.
+Call the Inventory page's add function.
+Call the add function with a blank name.
+Refresh Inventory after changing saved stock.
+Record the same purchase simultaneously.
+Reload a purchased plan and record it again.
+Clear outdated plans after preferences change.
+Purchase a plan that also uses existing Rice.
+Simulate a purchase saving error, then retry.
+Buy more of an existing inventory item.
+Record a purchase in one browser session.
+Select Lunch and click Generate meal. Compare ingredients with Inventory.
+Click Mark as Made and check Inventory values to see if they adjust
+Open Overview after marking the meal as made.
+Unmark the made meal, then check Inventory and Overview.
+Generate a meal without enough suitable ingredients.
+Generate a meal for each supported meal type.
+Send repeated make and undo requests at the same time.
+Mark two meals as made, then undo one.
+Load made meals for different days and sessions.
+Mark a meal as made twice, reload it, undo it, and mark it again.
+Generate a meal with an empty inventory.
+Simulate a timeout while generating a replacement meal.
+Simulate a saving failure when making or undoing a meal.
+Submit an unsupported meal type or invalid session.
+Prepare a meal card from a saved recipe.
+Try changing the meal type while generation is running.
+Return a recipe with unavailable ingredients or excessive quantities.
+Save a newly generated meal suggestion.
+Prepare messages for insufficient ingredients and a timeout.
+Change preferences after a meal has been marked as made.
+Return multiple recipes or the wrong meal type.
+Reload a meal after marking it as made.
+Return an empty meal response from the AI.
+Reduce inventory after generating a meal, then mark it as made.
+Calculate today's nutrition after making and undoing a meal.
+Make and undo a meal using fractional ingredient quantities.
+Submit invalid ingredient quantities and nutrition values.
+Select Halal, save changes, and reopen Preferences.
+Uncheck Halal, save changes, and reopen Preferences.
+Select Halal and Kosher, save changes, and reopen Preferences.
+Save and reopen each supported religious restriction.
+Save multiple restrictions with a repeated selection.
+Remove one restriction, then remove all restrictions.
+Change religious restrictions while keeping other preferences.
+Select the same restriction twice and submit an unknown option.
+Load older preferences without a religious restrictions field.
+Load invalid saved restrictions and try both planners.
+Open preferences containing valid and invalid restriction selections.
+Save each restriction and generate a grocery plan.
+Revise an older grocery plan after updating saved restrictions.
+Generate meals with individual, multiple, and no restrictions.
+Change restrictions after saving grocery and meal suggestions.
